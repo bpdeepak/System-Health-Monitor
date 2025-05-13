@@ -2,14 +2,17 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'your-dockerhub-username'
+        DOCKERHUB_USER = 'bpdeepak'
         IMAGE_TAG = 'latest'
     }
 
     stages {
         stage('Clone Code') {
             steps {
-                git 'https://github.com/yourusername/system-health-monitor.git'
+                git 'https://github.com/bpdeepak/System-Health-Monitor',
+                branch: 'main',
+                credentialsId: 'github-cred'
+
             }
         }
 
