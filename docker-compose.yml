@@ -1,16 +1,10 @@
-version: '3'
 services:
-  mongo:
-    image: mongo
-    volumes:
-      - mongo_data:/data/db
-
   backend:
     build: ./backend
     ports:
       - "5000:5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/metricsdb
+      - MONGO_URI=mongodb://mongo:27017/monitoring
     depends_on:
       - mongo
 
@@ -21,10 +15,13 @@ services:
     depends_on:
       - backend
 
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+
   agent:
     build: ./agent
     depends_on:
       - backend
-
-volumes:
-  mongo_data:
+    restart: always
