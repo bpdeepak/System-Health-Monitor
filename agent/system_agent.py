@@ -3,9 +3,10 @@ import socket
 import psutil
 import platform
 import requests
+import os
 from datetime import datetime
 
-BACKEND_URL = "http://backend:5000/api/metrics"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:5000/api/metrics")
 HOSTNAME = socket.gethostname()
 
 def collect_metrics():

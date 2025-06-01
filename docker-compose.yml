@@ -1,27 +1,44 @@
+# docker-compose.yml (Verify this structure)
+version: '3.8'
+
 services:
+  mongo:
+    image: mongo:latest
+    container_name: mongodb_monitoring
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
   backend:
     build: ./backend
+    container_name: backend_monitoring
     ports:
       - "5000:5000"
-    environment:
-      - MONGO_URI=mongodb://mongo:27017/monitoring
+    environment: # Pass environment variables
+      MONGO_URI: mongodb://mongo:27017/monitoring
+      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a # Make sure this matches your .env or you set it here
     depends_on:
       - mongo
+    restart: always
 
   frontend:
     build: ./frontend
+    container_name: frontend_monitoring
     ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  mongo:
-    image: mongo
-    ports:
-      - "27017:27017"
-
-  agent:
-    build: ./agent
+      - "3000:80" # Map container port 80 (where React build is served) to host port 3000
     depends_on:
       - backend
     restart: always
+
+  agent:
+    build: ./agent
+    container_name: agent_monitoring
+    environment:
+      BACKEND_URL: http://backend:5000/api/metrics # Agent connects to backend service name
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  mongodb_data:

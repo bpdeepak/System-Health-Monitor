@@ -7,7 +7,7 @@ const metricSchema = new mongoose.Schema({
   disk: Number,
   uptime: Number,
   os: String,
-  timestamp: Date
+  timestamp: { type: Date, default: Date.now, index: true }
 });
 
 module.exports = mongoose.model('Metric', metricSchema);

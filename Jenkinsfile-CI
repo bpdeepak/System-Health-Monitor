@@ -1,55 +1,126 @@
+// Jenkinsfile
 pipeline {
+    // Define the agent where the pipeline stages will run.
+    // 'any' means Jenkins will pick any available agent.
+    // For better isolation and consistent environments, you could use a specific Docker image:
+    // agent {
+    //     docker {
+    //         image 'node:20-alpine' // A lightweight Node.js image
+    //         args '-u 0' // Run as root inside container for npm installs
+    //     }
+    // }
     agent any
 
+    // Environment variables that will be available throughout the pipeline
     environment {
+        // Replace 'bpdeepak' with your actual Docker Hub username
         DOCKERHUB_USER = 'bpdeepak'
-        IMAGE_TAG = 'latest'
+        // Use a unique tag for each build, e.g., the Jenkins BUILD_NUMBER
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        // Jenkins credential ID for GitHub (must be configured in Jenkins)
+        GITHUB_CRED_ID = 'github-cred'
+        // Jenkins credential ID for Docker Hub (must be configured in Jenkins)
+        DOCKERHUB_CRED_ID = 'dockerhub-creds'
     }
 
     stages {
-        stage('Clone Code') {
+        stage('Checkout Code') {
             steps {
-                git url:
-                'https://github.com/bpdeepak/System-Health-Monitor.git',
-                branch: 'main',
-                credentialsId: 'github-cred'
-
+                script {
+                    // Clean workspace before checkout (important for fresh builds)
+                    cleanWs()
+                    // Checkout the code from your GitHub repository
+                    git branch: 'feature/ci-cd-and-testing', // Ensure this matches your development branch
+                        credentialsId: env.GITHUB_CRED_ID,
+                        url: 'https://github.com/bpdeepak/System-Health-Monitor.git'
+                }
             }
         }
 
-        stage('Install & Test Backend') {
+        stage('Backend Build & Test') {
             steps {
+                // Change directory to the backend folder
                 dir('backend') {
+                    // Install backend Node.js dependencies
                     sh 'npm install'
+                    // Run backend tests (unit and API integration tests)
                     sh 'npm test'
                 }
             }
         }
 
-        stage('Install & Lint Frontend') {
+        stage('Frontend Build & Test') {
             steps {
+                // Change directory to the frontend folder
                 dir('frontend') {
+                    // Install frontend Node.js dependencies
                     sh 'npm install'
-                    sh 'npm run lint'
+                    // Run frontend tests (component unit tests)
+                    sh 'npm test'
+                    // Build the production-ready frontend assets
+                    sh 'npm run build'
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker build -t $DOCKERHUB_USER/backend:$IMAGE_TAG ./backend'
-                sh 'docker build -t $DOCKERHUB_USER/frontend:$IMAGE_TAG ./frontend'
+                // Build Docker image for the backend service
+                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
+                // Build Docker image for the frontend service
+                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} ./frontend"
+                // Build Docker image for the agent service
+                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
+                // Optionally, build MongoDB image if you have a custom one, though usually standard mongo:latest is fine
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                // Use Jenkins credentials to log in to Docker Hub securely
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
-                    sh 'docker push $DOCKERHUB_USER/backend:$IMAGE_TAG'
-                    sh 'docker push $DOCKERHUB_USER/frontend:$IMAGE_TAG'
+                    // Push the built Docker images to Docker Hub
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}"
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}"
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}"
                 }
             }
         }
+
+        // --- Optional: Deployment Stage (for Continuous Deployment) ---
+        // This stage would typically be triggered after successful pushes and might involve SSHing
+        // to a remote server to pull the new images and restart the services.
+        // stage('Deploy to Server') {
+        //     // Replace 'your-remote-server' with a Jenkins agent label configured on your deployment server,
+        //     // or use 'agent any' and perform SSH commands.
+        //     agent { label 'your-remote-server-label' }
+        //     steps {
+        //         script {
+        //             // Ensure you have SSH credentials configured in Jenkins (e.g., 'your-ssh-cred-id')
+        //             // and the SSH agent plugin installed.
+        //             // This example assumes docker-compose is set up on the remote server.
+        //             sshagent(credentials: ['your-ssh-cred-id']) {
+        //                 // Replace 'user@your-server-ip' with your actual server login
+        //                 // and '/path/to/your/app' with the directory where your docker-compose.yml is
+        //                 sh "ssh -o StrictHostKeyChecking=no user@your-server-ip 'cd /path/to/your/app && docker-compose pull && docker-compose up -d --remove-orphans'"
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
+    // Post-build actions: executed regardless of pipeline status
+    post {
+        always {
+            cleanWs() // Clean up the Jenkins workspace after the build
+        }
+        success {
+            echo 'Pipeline finished successfully!'
+        }
+        failure {
+            echo 'Pipeline failed! Check logs for errors.'
+        }
+        // Add more post-actions like sending notifications (email, Slack etc.)
     }
 }
