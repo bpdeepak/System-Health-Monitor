@@ -9,12 +9,7 @@ pipeline {
     //         args '-u 0' // Run as root inside container for npm installs
     //     }
     // }
-    agent {
-        docker {
-            image 'node:20-alpine' // Use a Node.js Docker image
-            args '-u 0' // Run as root inside container, useful for npm installs
-        }
-    }
+    agent any
 
     // Environment variables that will be available throughout the pipeline
     environment {
