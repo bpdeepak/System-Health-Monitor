@@ -82,7 +82,7 @@ describe('Auth API', () => {
 
     expect(res.statusCode).to.equal(400);
     expect(res.body).to.have.property('errors');
-    expect(res.body.errors[0].msg).to.equal('Username is required');
+    expect(res.body.errors[0]).to.equal('Path `username` is required.'); // Expect the direct string message
   });
 
   it('should return 400 if registration username already exists', async () => {

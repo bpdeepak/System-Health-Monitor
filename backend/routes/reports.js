@@ -27,6 +27,7 @@ router.get('/generate', authMiddleware, authorize(['user', 'admin']), async (req
     }
 
     try {
+        console.log('Backend Query:', JSON.stringify(query, null, 2));
         // Fetch metrics for the report. You might want to limit the time range
         // or the number of metrics for very large datasets to prevent OOM errors.
         const metrics = await Metric.find(query).sort({ timestamp: 1 });
