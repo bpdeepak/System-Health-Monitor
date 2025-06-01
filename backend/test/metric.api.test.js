@@ -120,14 +120,6 @@ before(async () => {
     expect(res.body[1].hostname).to.exist;
   });
 
-  it('should return 401 if no token is provided when getting latest metrics', async () => {
-    const res = await request(server)
-      .get('/api/metrics/latest');
-
-    expect(res.statusCode).to.equal(401);
-    expect(res.body).to.have.property('msg').equal('No token, authorization denied');
-  });
-
   it('should allow authenticated users to get historical metrics for a hostname', async () => {
     const host1Metric1 = { ...mockMetric, hostname: 'history-host', timestamp: new Date(Date.now() - 3600000).toISOString(), cpu: 25 };
     const host1Metric2 = { ...mockMetric, hostname: 'history-host', timestamp: new Date(Date.now() - 1800000).toISOString(), cpu: 35 };

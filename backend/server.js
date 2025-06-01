@@ -53,16 +53,21 @@
     // For now, let's make POST public for agent and GET protected for frontend.
 
     // Endpoint to store metrics (Agent can post - keeping this public for now, or integrate agent auth later)
+    // In backend/server.js, inside the app.post('/api/metrics') route:
     app.post('/api/metrics', async (req, res) => {
         try {
-            // You might want to add a simple API key/secret check here for agents if not using full JWT for them.
             await Metric.create(req.body);
-            res.status(201).send('Metric stored');
+            res.status(201).json({ msg: 'Metric added successfully' });
         } catch (err) {
-            res.status(500).send({ message: err.message, error: err });
+            console.error(err.message);
+            // ADDED: Specific error handling for Mongoose validation errors
+            if (err.name === 'ValidationError') {
+                const errors = Object.values(err.errors).map(el => el.message);
+                return res.status(400).json({ errors });
+            }
+            res.status(500).json({ message: 'Failed to save metric', error: err.message });
         }
     });
-
     // Endpoint to get the latest metrics (Protected for frontend users)
     app.get('/api/metrics/latest', authMiddleware, async (req, res) => { // Apply authMiddleware here
         try {
