@@ -2,41 +2,45 @@ const request = require('supertest');
 const { expect } = require('chai');
 const mongoose = require('mongoose');
 const app = require('../server'); // Import your Express app for testing
-const User = require('../models/User');
+const User = require('../models/User'); // Ensure this path is correct
 const dotenv = require('dotenv');
 dotenv.config();
 
 describe('Auth API', () => {
-  // Use a separate test database connection
   let testMongoUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/monitoring_test';
-  let server; // To hold the server instance if started by supertest
+  let server; // To hold the server instance started by supertest
 
   before(async () => {
+    // Disconnect any existing Mongoose connections to ensure a clean state
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
     // Connect to the test database
     try {
-      if (mongoose.connection.readyState === 0 || !mongoose.connection.name.includes('_test')) {
-        await mongoose.connect(testMongoUri, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-        });
-        console.log('Connected to test MongoDB for auth API tests');
-      }
+      await mongoose.connect(testMongoUri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log(`Connected to test MongoDB for Auth API tests: ${mongoose.connection.name}`);
     } catch (err) {
-      console.error('Error connecting to test MongoDB:', err.message);
+      console.error('Error connecting to test MongoDB for Auth API tests:', err.message);
       process.exit(1);
     }
-    // Start the server instance for supertest
-    server = app.listen(0); // Listen on a random available port
+    // Start the server instance for supertest on a random available port
+    server = app.listen(0);
   });
 
   after(async () => {
-    // Disconnect from the database and close the server after all tests
+    // Close the server instance
     if (server) {
       await server.close();
     }
-    if (mongoose.connection.readyState !== 0 && mongoose.connection.name.includes('_test')) {
+    // Disconnect from the database and potentially drop it
+    if (mongoose.connection.readyState !== 0) {
+      // Optional: Drop the test database to ensure complete data cleanup
+      // await mongoose.connection.db.dropDatabase();
       await mongoose.disconnect();
-      console.log('Disconnected from test MongoDB for auth API tests');
+      console.log('Disconnected from test MongoDB for Auth API tests');
     }
   });
 

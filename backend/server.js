@@ -17,9 +17,12 @@
     const reportsRoutes = require('./routes/reports');
 
     // MongoDB connection with error handling
-    mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-      .then(() => console.log('MongoDB connected'))
-      .catch(err => console.error('MongoDB connection error:', err));
+    mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    })
+        .then(() => console.log('MongoDB Connected'))
+        .catch(err => console.error('MongoDB connection error:', err));
 
     // Health Check Route (Public)
     app.get('/api/health', (req, res) => {
@@ -115,8 +118,10 @@
       res.json({ msg: 'Welcome Admin! This is the admin panel.' });
     });
 
+    if (require.main === module) {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+        app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+    }
 
-    // Export the app for testing purposes
-    module.exports = app; // This allows the app to be imported in tests
+    // Export the app for testing
+    module.exports = app;

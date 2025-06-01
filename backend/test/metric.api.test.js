@@ -15,20 +15,24 @@ describe('Metrics API', () => {
   let userId;
   let adminId;
 
-  before(async () => {
+before(async () => {
+    // Disconnect any existing Mongoose connections
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
+    // Connect to the test database
     try {
-      if (mongoose.connection.readyState === 0 || !mongoose.connection.name.includes('_test')) {
-        await mongoose.connect(testMongoUri, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-        });
-        console.log('Connected to test MongoDB for metrics API tests');
-      }
+      await mongoose.connect(testMongoUri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log(`Connected to test MongoDB for Metrics API tests: ${mongoose.connection.name}`);
     } catch (err) {
-      console.error('Error connecting to test MongoDB:', err.message);
+      console.error('Error connecting to test MongoDB for Metrics API tests:', err.message);
       process.exit(1);
     }
-    server = app.listen(0); // Listen on a random available port
+
+    server = app.listen(0); // Start the Express server on a random port for API tests
 
     // Register and login a test user and admin to get tokens
     await request(server).post('/api/auth/register').send({ username: 'metricsuser', password: 'password123', role: 'user' });
@@ -46,9 +50,10 @@ describe('Metrics API', () => {
     if (server) {
       await server.close();
     }
-    if (mongoose.connection.readyState !== 0 && mongoose.connection.name.includes('_test')) {
+    if (mongoose.connection.readyState !== 0) {
+      // Optional: await mongoose.connection.db.dropDatabase();
       await mongoose.disconnect();
-      console.log('Disconnected from test MongoDB for metrics API tests');
+      console.log('Disconnected from test MongoDB for Metrics API tests');
     }
   });
 

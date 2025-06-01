@@ -1,32 +1,37 @@
 const { expect } = require('chai');
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const User = require('../models/User'); // Ensure this path is correct
 const dotenv = require('dotenv');
-dotenv.config(); // Load environment variables
+dotenv.config();
 
 describe('User Model', () => {
-  // Use a separate test database connection
   let testMongoUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/monitoring_test';
 
   before(async () => {
-    // Connect to the test database before all tests run
+    // Disconnect any existing Mongoose connections to ensure a clean state
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
+    // Connect to the test database
     try {
       await mongoose.connect(testMongoUri, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
       });
-      console.log('Connected to test MongoDB for user model tests');
+      console.log(`Connected to test MongoDB for User Model tests: ${mongoose.connection.name}`);
     } catch (err) {
-      console.error('Error connecting to test MongoDB:', err.message);
+      console.error('Error connecting to test MongoDB for User Model tests:', err.message);
       process.exit(1); // Exit if cannot connect to DB
     }
   });
 
   after(async () => {
-    // Disconnect from the database after all tests are done
+    // Disconnect from the test database after all tests are done
     if (mongoose.connection.readyState !== 0) {
+      // Optional: Drop the test database to ensure complete data cleanup
+      // await mongoose.connection.db.dropDatabase();
       await mongoose.disconnect();
-      console.log('Disconnected from test MongoDB for user model tests');
+      console.log('Disconnected from test MongoDB for User Model tests');
     }
   });
 
