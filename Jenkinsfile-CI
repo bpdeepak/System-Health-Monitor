@@ -7,6 +7,9 @@ pipeline {
         IMAGE_TAG = "${env.BUILD_NUMBER}" // Unique tag for each build
         GITHUB_CRED_ID = 'github-creds' // Jenkins credential ID for GitHub
         DOCKERHUB_CRED_ID = 'dockerhub-creds' // Jenkins credential ID for Docker Hub
+        MONGO_URI=mongodb://mongo:27017/monitoring
+        JWT_SECRET=6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
+        MONGO_TEST_URI=mongodb://localhost:27017/monitoring_test
     }
 
     stages {
