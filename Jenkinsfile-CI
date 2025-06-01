@@ -30,7 +30,7 @@ pipeline {
                     // Clean workspace before checkout (important for fresh builds)
                     cleanWs()
                     // Checkout the code from your GitHub repository
-                    git branch: 'feature/ci-cd-and-testing', // Ensure this matches your development branch
+                    git branch: 'dev', // Ensure this matches your development branch
                         credentialsId: env.GITHUB_CRED_ID,
                         url: 'https://github.com/bpdeepak/System-Health-Monitor.git'
                 }
