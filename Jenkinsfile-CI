@@ -28,6 +28,7 @@ pipeline {
             steps {
                 dir('backend') {
                     sh 'npm install'
+                    sh 'echo "MONGO_TEST_URI in Jenkins pipeline: $MONGO_TEST_URI"'
                     sh 'npm test'
                 }
             }
