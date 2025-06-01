@@ -23,7 +23,7 @@ pipeline {
         // Use a unique tag for each build, e.g., the Jenkins BUILD_NUMBER
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         // Jenkins credential ID for GitHub (must be configured in Jenkins)
-        GITHUB_CRED_ID = 'github-cred'
+        GITHUB_CRED_ID = 'github-creds'
         // Jenkins credential ID for Docker Hub (must be configured in Jenkins)
         DOCKERHUB_CRED_ID = 'dockerhub-creds'
     }
