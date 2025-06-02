@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.8' # You can remove this line if you want to silence the warning, but it's harmless.
 
 services:
   mongo:
@@ -21,9 +21,8 @@ services:
     image: bpdeepak49/system-health-monitor-backend:${IMAGE_TAG}
     container_name: backend_monitoring
     ports:
-      - "5000:5000"
+      - "5000:5000" # Backend API accessible on host port 5000
     environment:
-      # CRITICAL CORRECTION: Use the service name 'mongo' for inter-container communication
       MONGO_URI: mongodb://mongo:27017/monitoring
       JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
@@ -36,16 +35,12 @@ services:
   frontend:
     image: bpdeepak49/system-health-monitor-frontend:${IMAGE_TAG}
     container_name: frontend_monitoring
-    # Corrected Port Mapping: Frontend can't use 3000 if Grafana does.
-    # Changed frontend to 3001 on the host.
     ports:
-      - "3001:80" # Map container port 80 (where React build is served) to host port 3001
+      - "80:80" # <--- IMPORTANT CHANGE: Frontend now on standard HTTP port 80
     environment:
-      # IMPORTANT: If your frontend (React) code makes API calls directly from the browser
-      # it needs to know the *public* URL of your backend.
       REACT_APP_BACKEND_URL: http://13.48.48.96:5000 # This should be the public IP/DNS of your EC2 instance and port 5000
     depends_on:
-      - backend # This is for container start order, not always for API readiness
+      - backend
     restart: always
     networks:
       - app-network
@@ -71,12 +66,10 @@ services:
       - prometheus_data:/prometheus
     command: --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver --web.enable-lifecycle
     ports:
-      - "9090:9090" # Prometheus web UI
-    # Prometheus can technically start without the backend being ready,
-    # it just won't find targets immediately. No strong `depends_on` needed for function.
+      - "9090:9090" # Prometheus web UI accessible on host port 9090
     restart: unless-stopped
     networks:
-      - app-network # Ensure Prometheus is on the same network to scrape backend
+      - app-network
 
   grafana:
     image: grafana/grafana:latest
@@ -84,9 +77,9 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     ports:
-      - "3001:3000" # Grafana web UI will now be on host port 3000
+      - "3000:3000" # <--- IMPORTANT CHANGE: Grafana now on standard host port 3000
     depends_on:
-      - prometheus # Grafana needs Prometheus to be running to fetch data
+      - prometheus
     restart: unless-stopped
     networks:
       - app-network
