@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react'; // Removed 'act' as it's less needed without fake timers
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import Auth from '../components/Auth';
@@ -36,14 +36,9 @@ describe('Auth Component', () => {
       },
       writable: true,
     });
-
-    // --- REMOVED: jest.useFakeTimers();
   });
 
-  afterEach(() => {
-    // --- REMOVED: jest.runOnlyPendingTimers();
-    // --- REMOVED: jest.useRealTimers();
-  });
+  // No afterEach for timers needed anymore
 
   test('renders login form by default', () => {
     render(<Auth />);
@@ -74,19 +69,19 @@ describe('Auth Component', () => {
     await user.type(screen.getByLabelText(/password:/i), 'password123');
     await user.click(screen.getByRole('button', { name: /login/i }));
 
-    // This waitFor will now check for both the success message AND the navigation
+    // Wait for the success message to appear and ensure the navigation happens
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
         username: 'testuser',
         password: 'password123',
       });
       expect(mockSetToken).toHaveBeenCalledWith('mock-token');
+      // Ensure the success message is in the document
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
-      // Crucially, expect navigate to be called here too
+      // Now, assert that navigate was called.
+      // This is the last check, and waitFor will keep retrying until it's true or times out.
       expect(mockNavigate).toHaveBeenCalledWith('/');
-    });
-
-    // --- REMOVED: await act(async () => { jest.runAllTimers(); });
+    }, { timeout: 2000 }); // Increase waitFor timeout slightly if needed, default is 1000ms
   });
 
 
