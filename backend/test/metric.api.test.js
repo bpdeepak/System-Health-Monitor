@@ -154,8 +154,8 @@ before(async () => {
     console.log(`  Query End Date: ${endDate.toISOString()}`);
 
     const res = await request(server)
-      .get(`/api/metrics/history?hostname=date-test&startDate=<span class="math-inline">\{startDate\.toISOString\(\)\}&endDate\=</span>{endDate.toISOString()}`)
-      .set('x-auth-token', userToken);
+          .get(`/api/metrics/history?hostname=date-test&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+          .set('x-auth-token', userToken);
 
     console.log('API Response Status Code:', res.statusCode); // ADD THIS
         console.log('API Response Body:', JSON.stringify(res.body, null, 2)); // ADD THIS
