@@ -1,82 +1,76 @@
-// frontend/src/App.test.js
-
-// No jest.mock('recharts'); needed here due to craco.config.js
-
+// src/App.test.js
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-// MemoryRouter is NOT imported here because App.js provides its own Router
-import App from './App'; // Assuming App.js is in the same directory
+import '@testing-library/jest-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
+import App from './App'; // Make sure this path is correct
 
-// Mock react-router-dom hooks (useNavigate, Link) but NOT the routing components (Router, Routes, Route)
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'), // Keep actual implementations for components
-  useNavigate: jest.fn(),
-  Link: ({ children, to }) => <a href={to}>{children}</a>,
-}));
+// Mock the environment variable if it's used in App.js
+process.env.REACT_APP_BACKEND_URL = 'http://localhost:5000';
 
-// Mock the AuthContext
-jest.mock('../context/AuthContext', () => ({
-  useAuth: jest.fn(), // This will be implemented in each test
-}));
+// Mock localStorage for tests
+const localStorageMock = (() => {
+  let store = {};
+  return {
+    getItem: (key) => store[key] || null,
+    setItem: (key, value) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
 
-// Mock localStorage
-Object.defineProperty(window, 'localStorage', {
-  value: {
-    setItem: jest.fn(),
-    getItem: jest.fn(() => null),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  },
-  writable: true,
-});
-
-// Mock process.env.REACT_APP_BACKEND_URL
-process.env.REACT_APP_BACKEND_URL = 'http://test-backend:5000';
-
+// Replace the global localStorage with our mock
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('App component', () => {
-  const { useAuth } = require('../context/AuthContext');
-
   beforeEach(() => {
-    useAuth.mockClear();
+    // Clear localStorage before each test to ensure isolation
+    localStorage.clear();
+    // Reset any mocks if necessary (though the above handles it for localStorage)
+  });
+
+  afterEach(() => {
+    // Clean up after each test
     localStorage.clear();
   });
 
   test('renders login page if not authenticated (default route)', async () => {
-    useAuth.mockImplementation(() => ({
-      token: null,
-      // --- ADD THIS LINE BACK ---
-      isAuthenticated: false, // Explicitly set isAuthenticated for App.js's logic
-      setToken: jest.fn(),
-    }));
+    // Ensure localStorage is empty for this test
+    localStorage.clear();
 
-    render(<App />); // Render App directly, as it contains BrowserRouter
+    render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+    // Expect the Login page to be rendered
+    expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
+    expect(screen.getByText(/Don't have an account?/i)).toBeInTheDocument();
   });
 
   test('renders Dashboard if authenticated (default route)', async () => {
-    useAuth.mockImplementation(() => ({
-      token: 'mock-auth-token', // Authenticated
-      // --- ADD THIS LINE BACK ---
-      isAuthenticated: true, // Explicitly set isAuthenticated for App.js's logic
-      setToken: jest.fn(),
-    }));
+    // Set localStorage items *before* rendering the App component
+    localStorage.setItem('token', 'fake-token');
+    localStorage.setItem('role', 'user');
 
-    render(<App />); // Render App directly
+    render(<App />);
 
+    // Wait for the Dashboard content to appear, as fetching data might be async
     expect(await screen.findByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByText(/Latest System Metrics Summary/i)).toBeInTheDocument();
   });
 
   test('redirects to login on root path if not authenticated (alternative initial path)', async () => {
-    useAuth.mockImplementation(() => ({
-      token: null,
-      // --- ADD THIS LINE BACK ---
-      isAuthenticated: false, // Explicitly set isAuthenticated for App.js's logic
-      setToken: jest.fn(),
-    }));
+    // Ensure localStorage is empty for this test
+    localStorage.clear();
 
+    // We don't need to navigate explicitly, as the App component handles the root path
     render(<App />);
-    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+
+    // It should redirect to login, so we expect login specific content
+    expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
   });
 });
