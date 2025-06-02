@@ -19,21 +19,13 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test --ci --watchAll=false --verbose",
     "eject": "react-scripts eject"
-  },
-  "jest": {
-    "testEnvironment": "jsdom",
-    "transform": {
-      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "babel-jest"
-    },
-    "transformIgnorePatterns": [
-      "/node_modules/(?!(axios|chartjs-adapter-date-fns)/)"
-    ]
   },
   "eslintConfig": {
     "extends": [
