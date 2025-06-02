@@ -101,7 +101,7 @@ pipeline {
                             docker logout
                             echo "Deployment commands finished on remote server."
 EOF # end of SSH session
-                        """
+                    """
                     }
                 }
             }
