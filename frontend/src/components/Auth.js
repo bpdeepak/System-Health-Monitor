@@ -1,110 +1,117 @@
 // frontend/src/components/Auth.js
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../App.css'; // Assuming common styles are here or separate auth.css
 
-const Auth = () => {
+function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user'); // Default role for registration
-  const [isRegister, setIsRegister] = useState(false);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  const { login } = useAuth(); // Use the login function from AuthContext
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth(); // Only need login from context here
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage('');
     setError('');
-    setSuccess('');
+
+    const endpoint = isLogin ? 'login' : 'register';
+    const payload = isLogin ? { username, password } : { username, password, role };
 
     try {
-      let response;
-      if (isRegister) {
-        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, role }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setSuccess(data.msg || 'Registration successful! You can now log in.');
-          setIsRegister(false); // Switch to login form
-          setUsername(''); // Clear form fields
-          setPassword('');
-          setRole('user'); // Reset role
-        } else {
-          setError(data.msg || (data.errors && data.errors.length > 0 ? data.errors.join(', ') : 'Registration failed'));
-        }
-      } else { // Login
-        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-          login(data.token, data.user ? data.user.role : 'user'); // Use login from context
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (isLogin) {
+          login(data.token, data.user.role); // Use the login function from context
+          setMessage('Success! Redirecting...');
+          // Redirect to dashboard or appropriate page after successful login
           navigate('/dashboard');
         } else {
-          setError(data.msg || 'Login failed');
+          setMessage(data.msg || 'Registration successful! You can now log in.');
+          setIsLogin(true); // Switch to login form after successful registration
         }
+      } else {
+        setError(data.msg || `Failed to ${isLogin ? 'login' : 'register'}.`);
       }
     } catch (err) {
-      console.error(`${isRegister ? 'Registration' : 'Login'} error:`, err);
-      setError(`An error occurred during ${isRegister ? 'registration' : 'login'}. Please try again.`);
+      console.error(`Error during ${isLogin ? 'login' : 'registration'}:`, err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-container">
-      <h2>{isRegister ? 'Register' : 'Login'}</h2>
-      <form onSubmit={handleSubmit} className="auth-form">
-        {error && <p className="error-message">{error}</p>}
-        {success && <p className="success-message">{success}</p>}
+      <h2>{isLogin ? 'Login' : 'Register'}</h2>
+      <form className="auth-form" onSubmit={handleAuth}>
         <div className="form-group">
-          <label>Username:</label>
+          <label htmlFor="username">Username:</label> {/* Added htmlFor */}
           <input
             type="text"
+            id="username" // Added id
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            aria-label="Username" // Added for better accessibility
           />
         </div>
         <div className="form-group">
-          <label>Password:</label>
+          <label htmlFor="password">Password:</label> {/* Added htmlFor */}
           <input
             type="password"
+            id="password" // Added id
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            aria-label="Password" // Added for better accessibility
           />
         </div>
-        {isRegister && (
+        {!isLogin && (
           <div className="form-group">
-            <label>Role:</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <label htmlFor="role">Role:</label> {/* Added htmlFor */}
+            <select
+              id="role" // Added id
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              aria-label="Role" // Added for better accessibility
+            >
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
           </div>
         )}
-        <button type="submit" className="btn-primary">{isRegister ? 'Register' : 'Login'}</button>
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Loading...' : (isLogin ? 'Login' : 'Register')}
+        </button>
       </form>
+
+      {message && <p className="success-message">{message}</p>}
+      {error && <p className="error-message">{error}</p>}
+
       <p>
-        {isRegister ? (
-          <>
-            Already have an account? <span onClick={() => setIsRegister(false)} className="link-style">Login here</span>
-          </>
-        ) : (
-          <>
-            Don't have an account? <span onClick={() => setIsRegister(true)} className="link-style">Register here</span>
-          </>
-        )}
+        {isLogin ? "Don't have an account? " : "Already have an account? "}
+        <span className="link-style" onClick={() => setIsLogin(!isLogin)}>
+          {isLogin ? 'Register here' : 'Login here'}
+        </span>
       </p>
     </div>
   );
-};
+}
 
 export default Auth;
