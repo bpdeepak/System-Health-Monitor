@@ -66,7 +66,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1h' },
       (err, token) => {
         if (err) throw err;
-        res.json({ token, msg: 'Logged in successfully', id: user.id });
+        res.json({
+          token,
+          msg: 'Logged in successfully',
+          user: { // <--- ADD THIS 'user' OBJECT
+            id: user.id,
+            role: user.role // <--- ENSURE user.role IS INCLUDED HERE
+          }
+        });
       }
     );
   } catch (err) {
