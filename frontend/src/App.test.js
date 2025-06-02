@@ -1,17 +1,14 @@
 // frontend/src/App.test.js
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-// NO LONGER IMPORT BrowserRouter here, as App itself provides it
-// import { BrowserRouter as Router } from 'react-router-dom';
 
 // Import the actual AuthProvider to wrap App in tests
 import { AuthProvider } from '../context/AuthContext';
 
 import App from './App';
-
-// Mock the environment variable (crucial for API calls in components)
-process.env.REACT_APP_BACKEND_URL = 'http://localhost:5000';
+import axios from 'axios'; // Import axios
+jest.mock('axios'); // Mock axios completely
 
 // Mock localStorage for tests, as AuthContext relies on it for initial state
 const localStorageMock = (() => {
@@ -33,43 +30,38 @@ const localStorageMock = (() => {
 // Replace the global localStorage with our mock for testing environment
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Mock fetch for Dashboard/Reports/AdminPanel components to prevent actual network calls
-global.fetch = jest.fn((url) => {
-  if (url.includes('/api/metrics')) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ metrics: [{ hostname: 'host1', cpu_usage: 10, memory_usage: 20, timestamp: new Date().toISOString() }], summary: {} }),
-    });
-  }
-  if (url.includes('/api/hosts')) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve(['host1', 'host2']),
-    });
-  }
-  if (url.includes('/api/admin-panel')) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ users: [] }), // Empty array for admin panel users
-    });
-  }
-  if (url.includes('/api/reports/generate')) {
-    return Promise.resolve({
-      ok: true,
-      blob: () => Promise.resolve(new Blob(['mock PDF content'], { type: 'application/pdf' })),
-    });
-  }
-  // Default for unhandled URLs
-  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-});
-
-
 describe('App component', () => {
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
     // Reset path before each test to ensure tests are isolated
     window.history.pushState({}, 'Test page', '/');
+
+    // Mock axios responses for various endpoints
+    axios.get.mockImplementation((url) => {
+      if (url.includes('/api/metrics')) {
+        return Promise.resolve({
+          data: { metrics: [{ hostname: 'host1', cpu_usage: 10, memory_usage: 20, timestamp: new Date().toISOString() }], summary: {} },
+        });
+      }
+      if (url.includes('/api/hosts')) {
+        return Promise.resolve({ data: ['host1', 'host2'] });
+      }
+      if (url.includes('/api/admin-panel')) {
+        return Promise.resolve({ data: { users: [] } }); // Empty array for admin panel users
+      }
+      return Promise.reject(new Error(`Unhandled axios GET request for URL: ${url}`));
+    });
+
+    axios.post.mockImplementation((url, data) => {
+        if (url.includes('/api/reports/generate')) {
+            return Promise.resolve({
+                data: new Blob(['mock PDF content'], { type: 'application/pdf' }),
+                headers: { 'content-type': 'application/pdf' }
+            });
+        }
+        return Promise.reject(new Error(`Unhandled axios POST request for URL: ${url}`));
+    });
   });
 
   afterEach(() => {
@@ -119,25 +111,18 @@ describe('App component', () => {
     localStorage.setItem('token', 'admin-token');
     localStorage.setItem('role', 'admin');
 
-    // For testing specific routes directly when App uses BrowserRouter internally,
-    // you can mock window.location or use MemoryRouter if your App component
-    // is structured to accept a router prop or similar.
-    // Given App uses BrowserRouter, we'll simulate the navigation and then check.
-    // Or, for direct route testing, we can use MemoryRouter from react-router-dom/server
-    // to set initial entries. Let's use the actual MemoryRouter import for clarity.
-
-    // Using MemoryRouter for direct path testing in App.test.js
-    const { MemoryRouter } = jest.requireActual('react-router-dom');
-
-    render(
-      <MemoryRouter initialEntries={['/admin']}>
+    await act(async () => {
+      // Simulate navigation to /admin before rendering App
+      window.history.pushState({}, 'Test page', '/admin');
+      render(
         <AuthProvider>
           <App />
         </AuthProvider>
-      </MemoryRouter>
-    );
+      );
+    });
 
     expect(await screen.findByRole('heading', { name: /Admin Panel/i })).toBeInTheDocument();
+    // Assuming "No user data available." is rendered if user list is empty
     expect(screen.getByText(/No user data available./i)).toBeInTheDocument();
   });
 });
