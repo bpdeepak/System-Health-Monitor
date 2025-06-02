@@ -58,7 +58,7 @@ services:
       # Agent connects to backend service name within the Docker network
       API_ENDPOINT: http://backend:5000/api/metrics # This is correct for inter-container
       # Add HOSTNAME for agent if you want it unique
-      HOSTNAME: agent-${env.HOSTNAME_FOR_AGENT_TAG} # Define HOSTNAME_FOR_AGENT_TAG in Jenkinsfile
+      HOSTNAME: agent-${HOSTNAME_FOR_AGENT_TAG} # Define HOSTNAME_FOR_AGENT_TAG in Jenkinsfile
       JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
       - backend

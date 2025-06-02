@@ -91,6 +91,7 @@ pipeline {
                             docker compose down --remove-orphans
 
                             echo "Starting new containers with Docker Compose..."
+                            export HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}"
                             docker compose up -d --build=false
 
                             echo "Cleaning up old Docker images locally (optional)..."
@@ -99,7 +100,7 @@ pipeline {
                             echo "Logging out from Docker Hub..."
                             docker logout
                             echo "Deployment commands finished on remote server."
-                        EOF
+EOF # end of SSH session
                         """
                     }
                 }
