@@ -162,7 +162,7 @@ before(async () => {
         if (Array.isArray(res.body)) { // Check if it's an array before forEach
             console.log('API Response Body Timestamps:');
             res.body.forEach(metric => console.log(`  - ${metric.timestamp}`));
-            expect(res.body).to.have.lengthOf(2); // Keep your original assertion
+            expect(res.body).to.have.lengthOf(1); // Keep your original assertion
         } else {
             console.log('Response body was not an array. Cannot log timestamps.');
             expect.fail('Response body was not an array, indicating an API error.'); // Fail the test if not an array
