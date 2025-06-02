@@ -1,8 +1,4 @@
 // frontend/src/App.test.js
-
-// Add this line at the very top of your test file to mock 'recharts'
-jest.mock('recharts');
-
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App'; // Assuming App.js is in the same directory

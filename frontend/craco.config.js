@@ -7,9 +7,11 @@ module.exports = {
         "/node_modules/(?!(axios|chartjs-adapter-date-fns)/)"
       ];
 
-      // ADD THIS SECTION: Configure Jest to mock CSS files
+      // UPDATE THIS SECTION: Configure Jest to mock CSS files AND recharts
       jestConfig.moduleNameMapper = {
-        "\\.css$": "<rootDir>/__mocks__/styleMock.js"
+        "\\.css$": "<rootDir>/__mocks__/styleMock.js",
+        // ADD THIS LINE FOR RECHARTS
+        "recharts": "<rootDir>/__mocks__/recharts.js"
       };
 
       return jestConfig;
