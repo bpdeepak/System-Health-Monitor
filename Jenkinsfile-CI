@@ -10,23 +10,15 @@ pipeline {
         MONGO_URI='mongodb://localhost:27017/monitoring_test'
         JWT_SECRET='6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a'
         MONGO_TEST_URI='mongodb://localhost:27017/monitoring_test'
+        
+        DEPLOY_SERVER_USER = 'ubuntu' // The default user for Ubuntu EC2
+        DEPLOY_SERVER_IP = '13.48.48.96' // Your actual EC2 Public IPv4 address
+        SSH_CRED_ID = 'ssh-deploy-server' // ID of the SSH credential you configured
+        HOSTNAME_FOR_AGENT_TAG = "${env.BUILD_NUMBER}"
         // DOCKER_HOST = 'unix:///home/deepak/.docker/desktop/docker.sock' // Keep this line removed/commented out
     }
 
     stages {
-        // REMOVE THIS ENTIRE STAGE:
-        /*
-        stage('Checkout Code') {
-            steps {
-                script {
-                    cleanWs() // Clean Jenkins workspace
-                    git branch: 'dev', // Make sure this matches your branch
-                        credentialsId: env.GITHUB_CRED_ID,
-                        url: 'https://github.com/bpdeepak/System-Health-Monitor.git'
-                }
-            }
-        }
-        */
 
         // Start directly with your build/test stages
         stage('Backend Build & Test') {
@@ -69,6 +61,60 @@ pipeline {
                 }
             }
         }
+    }
+
+    stage('Deploy with Docker Compose') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY_PATH', passphraseVariable: 'SSH_PASSPHRASE'),
+                    usernamePassword(credentialsId: env.DOCKERHUB_CRED_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')
+                ]) {
+                    script {
+                        // Ensure the SSH key is readable by current user
+                        sh "chmod 600 ${SSH_KEY_PATH}"
+
+                        // --- Copy docker-compose.yml to the target server ---
+                        // Define the remote path where your docker-compose.yml and data will reside
+                        def remoteAppPath = "/home/${env.DEPLOY_SERVER_USER}/system-health-monitor" # Use home directory
+                        echo "Copying docker-compose.yml to ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}"
+                        sh "ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} 'mkdir -p ${remoteAppPath}'"
+                        sh "scp -i ${SSH_KEY_PATH} docker-compose.yml ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}/docker-compose.yml"
+
+                        // --- Execute Docker Compose commands on the remote server via SSH ---
+                        echo "Executing Docker Compose deployment on ${env.DEPLOY_SERVER_IP}"
+                        sh """
+                            ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} << 'EOF'
+                                # Commands to run on the remote server
+                                cd ${remoteAppPath}
+
+                                echo "Logging into Docker Hub..."
+                                echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
+
+                                echo "Pulling latest Docker images..."
+                                docker pull ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}
+                                docker pull ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}
+                                docker pull ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}
+                                docker pull mongo:latest
+
+                                echo "Stopping and removing old containers..."
+                                docker compose down --remove-orphans
+
+                                echo "Starting new containers with Docker Compose..."
+                                docker compose up -d --build=false
+
+                                echo "Cleaning up old Docker images locally (optional)..."
+                                docker image prune -f
+
+                                echo "Logging out from Docker Hub..."
+                                docker logout
+                                echo "Deployment commands finished on remote server."
+                            EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
     }
 
     post {

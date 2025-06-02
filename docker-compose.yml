@@ -1,44 +1,74 @@
-# docker-compose.yml (Verify this structure)
-version: '3.8'
+# docker-compose.yml (Place this in the root of your Git repository)
+version: '3.8' # You can remove this line if your Docker Compose is v2+, it's just a warning.
 
 services:
   mongo:
     image: mongo:latest
     container_name: mongodb_monitoring
     ports:
-      - "27017:27017"
+      - "27018:27017" # Host:Container port. Keep this if no local Mongo is running on 27017.
+                      # If local Mongo is running, change to, e.g., "27018:27017"
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - app-network # Explicitly connect to the network
+    healthcheck: # <-- NEW: Healthcheck for MongoDB robustness
+      test: echo 'db.runCommand("ping").ok' | mongosh --port 27017 --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
     container_name: backend_monitoring
     ports:
       - "5000:5000"
-    environment: # Pass environment variables
-      MONGO_URI: mongodb://localhost:27017/monitoring
-      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a # Make sure this matches your .env or you set it here
+    environment:
+      # CRITICAL CORRECTION: Use the service name 'mongo' for inter-container communication
+      MONGO_URI: mongodb://mongo:27017/monitoring
+      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy # <-- NEW: Wait for Mongo to be healthy
     restart: always
+    networks:
+      - app-network # Explicitly connect to the network
 
   frontend:
     build: ./frontend
     container_name: frontend_monitoring
     ports:
       - "3000:80" # Map container port 80 (where React build is served) to host port 3000
+    environment:
+      # IMPORTANT: If your frontend (React) code makes API calls directly from the browser
+      # it needs to know the *public* URL of your backend.
+      # If running on the same host, it's often http://localhost:5000
+      # If your frontend container itself makes backend calls, it needs http://backend:5000
+      REACT_APP_BACKEND_URL: http://localhost:5000 # Use this if accessing from browser on host
     depends_on:
-      - backend
+      - backend # This is for container start order, not always for API readiness
     restart: always
+    networks:
+      - app-network # Explicitly connect to the network
 
   agent:
     build: ./agent
     container_name: agent_monitoring
     environment:
-      BACKEND_URL: http://backend:5000/api/metrics # Agent connects to backend service name
+      # Agent connects to backend service name within the Docker network
+      API_ENDPOINT: http://backend:5000/api/metrics # This is correct for inter-container
+      # Add HOSTNAME for agent if you want it unique
+      HOSTNAME: agent-${env.HOSTNAME_FOR_AGENT_TAG} # Define HOSTNAME_FOR_AGENT_TAG in Jenkinsfile
+      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
       - backend
     restart: always
+    networks:
+      - app-network # Explicitly connect to the network
 
 volumes:
-  mongodb_data:
+  mongodb_data: # Define the named volume for MongoDB data persistence
+
+networks: # <-- NEW: Define the network explicitly (good practice)
+  app-network:
+    driver: bridge
