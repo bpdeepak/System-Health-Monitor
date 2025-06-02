@@ -86,32 +86,53 @@
         }
     });
 
-    app.get('/api/metrics/history', authMiddleware, authorize(['user', 'admin']), async (req, res) => { // User or Admin can view history
-        const { hostname, startDate, endDate } = req.query;
-        let query = {};
+// In backend/server.js, locate your app.get('/api/metrics/history') route:
 
-        if (hostname) {
-            query.hostname = hostname;
-        }
-        if (startDate || endDate) {
-            query.timestamp = {};
-            if (startDate) {
-                query.timestamp.$gte = new Date(startDate);
-            }
-            if (endDate) {
-                query.timestamp.$lte = new Date(endDate);
-            }
-        }
+app.get('/api/metrics/history', authMiddleware, authorize(['user', 'admin']), async (req, res) => {
+    const { hostname, startDate, endDate } = req.query;
+    let query = {};
 
-        try {
-            // Limit the number of results to prevent excessively large responses
-            const historicalMetrics = await Metric.find(query).sort({ timestamp: 1 }).limit(1000);
-            res.json(historicalMetrics);
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send({ message: 'Error fetching historical metrics', error: err });
+    console.log('Backend Received Query Params:'); // ADD THIS
+    console.log(`  hostname: ${hostname}`);       // ADD THIS
+    console.log(`  startDate: ${startDate}`);     // ADD THIS
+    console.log(`  endDate: ${endDate}`);         // ADD THIS
+
+    if (hostname) {
+        query.hostname = hostname;
+    }
+    if (startDate || endDate) {
+        query.timestamp = {};
+        if (startDate) {
+            const parsedStartDate = new Date(startDate); // Capture parsed date
+            console.log(`  Parsed startDate: ${parsedStartDate}`); // ADD THIS
+            if (isNaN(parsedStartDate.getTime())) { // Check if it's an invalid date
+                console.error(`  ERROR: Invalid startDate parsed from: ${startDate}`); // ADD THIS
+                return res.status(400).json({ msg: 'Invalid startDate format' }); // ADD THIS: Early exit for invalid date
+            }
+            query.timestamp.$gte = parsedStartDate;
         }
-    });
+        if (endDate) {
+            const parsedEndDate = new Date(endDate); // Capture parsed date
+            console.log(`  Parsed endDate: ${parsedEndDate}`); // ADD THIS
+            if (isNaN(parsedEndDate.getTime())) { // Check if it's an invalid date
+                console.error(`  ERROR: Invalid endDate parsed from: ${endDate}`); // ADD THIS
+                return res.status(400).json({ msg: 'Invalid endDate format' }); // ADD THIS: Early exit for invalid date
+            }
+            query.timestamp.$lte = parsedEndDate;
+        }
+    }
+
+    console.log('Backend Final Mongoose Query:', JSON.stringify(query, null, 2)); // ADD THIS
+
+    try {
+        const historicalMetrics = await Metric.find(query).sort({ timestamp: 1 }).limit(1000);
+        console.log(`  Found ${historicalMetrics.length} historical metrics.`); // ADD THIS
+        res.json(historicalMetrics);
+    } catch (err) {
+        console.error('Error fetching historical metrics:', err.message); // Refined error log
+        res.status(500).json({ message: 'Error fetching historical metrics', error: err.message }); // Changed to json and err.message
+    }
+});
 
     // Test protected route
     app.get('/api/private', authMiddleware, (req, res) => {

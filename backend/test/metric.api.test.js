@@ -157,7 +157,15 @@ before(async () => {
       .get(`/api/metrics/history?hostname=date-test&startDate=<span class="math-inline">\{startDate\.toISOString\(\)\}&endDate\=</span>{endDate.toISOString()}`)
       .set('x-auth-token', userToken);
 
-    console.log('API Response Body Timestamps:');
-    res.body.forEach(metric => console.log(`  - ${metric.timestamp}`));
+    console.log('API Response Status Code:', res.statusCode); // ADD THIS
+        console.log('API Response Body:', JSON.stringify(res.body, null, 2)); // ADD THIS
+        if (Array.isArray(res.body)) { // Check if it's an array before forEach
+            console.log('API Response Body Timestamps:');
+            res.body.forEach(metric => console.log(`  - ${metric.timestamp}`));
+            expect(res.body).to.have.lengthOf(2); // Keep your original assertion
+        } else {
+            console.log('Response body was not an array. Cannot log timestamps.');
+            expect.fail('Response body was not an array, indicating an API error.'); // Fail the test if not an array
+        }
   });
 });
