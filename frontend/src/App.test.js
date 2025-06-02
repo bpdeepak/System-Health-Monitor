@@ -1,4 +1,11 @@
 // frontend/src/App.test.js
+
+// Add this line at the very top of your test file to mock 'recharts'
+// This line was removed in the previous step, confirm it's still removed
+// as it's handled by craco.config.js moduleNameMapper
+// jest.mock('recharts'); // <--- ENSURE THIS LINE IS ABSENT
+
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App'; // Assuming App.js is in the same directory
@@ -13,19 +20,18 @@ jest.mock('react-router-dom', () => ({
   Route: ({ children }) => <div>{children}</div>,
 }));
 
-// Mock the AuthContext
-// This now accurately reflects the 'token' and 'setToken' provided by AuthContext.js
+// Mock the AuthContext (this will now be resolved by moduleNameMapper)
 jest.mock('../context/AuthContext', () => ({
-  // Mock the useAuth hook to return a mock context value
   useAuth: jest.fn(),
 }));
 
-// Mock localStorage
+// Mock localStorage - ADDED clear: jest.fn()
 Object.defineProperty(window, 'localStorage', {
   value: {
     setItem: jest.fn(),
     getItem: jest.fn(() => null),
     removeItem: jest.fn(),
+    clear: jest.fn(), // <--- ADD THIS LINE
   },
   writable: true,
 });
@@ -35,40 +41,30 @@ process.env.REACT_APP_BACKEND_URL = 'http://test-backend:5000';
 
 
 describe('App component', () => {
-  // Get the mocked useAuth for individual test case manipulation
   const { useAuth } = require('../context/AuthContext');
 
   beforeEach(() => {
-    // Reset mocks before each test
     useAuth.mockClear();
-    localStorage.clear(); // Clear localStorage mock as well
+    localStorage.clear();
   });
 
-  // Test case for unauthenticated user (should render Auth component/Login)
   test('renders login page if not authenticated', () => {
-    // Set useAuth to return an unauthenticated state (no token)
     useAuth.mockImplementation(() => ({
-      token: null, // No token means unauthenticated
+      token: null,
       setToken: jest.fn(),
     }));
 
     render(<App />);
-    // Assuming your Auth component (Login form) has a heading like "Login"
     expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
   });
 
-  // Test case for authenticated user (should render Dashboard)
   test('renders Dashboard if authenticated', () => {
-    // Set useAuth to return an authenticated state (with a token)
     useAuth.mockImplementation(() => ({
-      token: 'mock-auth-token', // A valid token means authenticated
+      token: 'mock-auth-token',
       setToken: jest.fn(),
     }));
 
     render(<App />);
-    // Assuming your Dashboard component has a heading or distinct text like "System Monitoring Dashboard"
     expect(screen.getByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
   });
-
-  // Add more tests for other routes or authenticated scenarios if needed
 });
