@@ -1,18 +1,21 @@
 // Jenkinsfile
 pipeline {
-    agent any // Jenkins will run steps directly on the host machine
+    agent any
 
     environment {
-        DOCKERHUB_USER = 'bpdeepak' // Your Docker Hub username
-        IMAGE_TAG = "${env.BUILD_NUMBER}" // Unique tag for each build
-        GITHUB_CRED_ID = 'github-creds' // Jenkins credential ID for GitHub
-        DOCKERHUB_CRED_ID = 'dockerhub-creds' // Jenkins credential ID for Docker Hub
+        DOCKERHUB_USER = 'bpdeepak'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        GITHUB_CRED_ID = 'github-creds'
+        DOCKERHUB_CRED_ID = 'dockerhub-creds'
         MONGO_URI='mongodb://localhost:27017/monitoring_test'
         JWT_SECRET='6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a'
         MONGO_TEST_URI='mongodb://localhost:27017/monitoring_test'
+        // DOCKER_HOST = 'unix:///home/deepak/.docker/desktop/docker.sock' // Keep this line removed/commented out
     }
 
     stages {
+        // REMOVE THIS ENTIRE STAGE:
+        /*
         stage('Checkout Code') {
             steps {
                 script {
@@ -23,14 +26,16 @@ pipeline {
                 }
             }
         }
+        */
 
+        // Start directly with your build/test stages
         stage('Backend Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
+                    sh 'npm install --silent' // Add --silent here
                     sh 'echo "MONGO_TEST_URI in Jenkins pipeline: $MONGO_TEST_URI"'
                     sh 'rm -f .env'
-                    sh 'npm test'
+                    sh 'npm test -- --silent' // Add --silent here for mocha output
                 }
             }
         }
@@ -38,17 +43,16 @@ pipeline {
         stage('Frontend Build & Test') {
             steps {
                 dir('frontend') {
-                    sh 'rm -rf node_modules' // Remove node_modules directory
-                    sh 'rm -f package-lock.json' // Remove package-lock.json file
-                    sh 'npm install'
-                    sh 'npm test -- --ci --watchAll=false --verbose'
+                    sh 'rm -rf node_modules'
+                    sh 'rm -f package-lock.json'
+                    sh 'npm install --silent' // Add --silent here
+                    sh 'npm test -- --ci --watchAll=false --silent' // Add --silent here
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                // These commands will now correctly use the Docker Desktop installation on your system
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} ./frontend"
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
