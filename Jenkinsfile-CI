@@ -75,32 +75,33 @@ pipeline {
 
                         echo "Executing Docker Compose deployment on ${env.DEPLOY_SERVER_IP}"
                         sh """
-                        ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} bash -s << EOF
-                            cd ${remoteAppPath}
+                    ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} bash -s << 'EOF'
+                        cd ${remoteAppPath}
 
-                            echo "Logging into Docker Hub..."
-                            echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                        echo "Logging into Docker Hub..."
+                        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
 
-                            echo "Pulling latest Docker images..."
-                            docker pull ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}
-                            docker pull ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}
-                            docker pull ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}
-                            docker pull mongo:latest
+                        echo "Pulling latest Docker images..."
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}
+                        docker pull mongo:latest
 
-                            echo "Stopping and removing old containers..."
-                            docker compose down --remove-orphans
+                        echo "Stopping and removing old containers..."
+                        docker compose down --remove-orphans
 
-                            echo "Starting new containers with Docker Compose..."
-                            export HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}"
-                            docker compose up -d --build=false
+                        echo "Starting new containers with Docker Compose..."
+                        export HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}"
+                        export IMAGE_TAG="${env.IMAGE_TAG}"
+                        docker compose up -d --build=false
 
-                            echo "Cleaning up old Docker images locally (optional)..."
-                            docker image prune -f
+                        echo "Cleaning up old Docker images locally (optional)..."
+                        docker image prune -f
 
-                            echo "Logging out from Docker Hub..."
-                            docker logout
-                            echo "Deployment commands finished on remote server."
-EOF # end of SSH session
+                        echo "Logging out from Docker Hub..."
+                        docker logout
+                        echo "Deployment commands finished on remote server."
+                    EOF
                     """
                     }
                 }

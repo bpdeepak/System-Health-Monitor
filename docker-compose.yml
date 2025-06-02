@@ -19,7 +19,7 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    image: bpdeepak49/system-health-monitor-backend:${IMAGE_TAG} 
     container_name: backend_monitoring
     ports:
       - "5000:5000"
@@ -35,7 +35,7 @@ services:
       - app-network # Explicitly connect to the network
 
   frontend:
-    build: ./frontend
+    image: bpdeepak49/system-health-monitor-frontend:${IMAGE_TAG}
     container_name: frontend_monitoring
     ports:
       - "3000:80" # Map container port 80 (where React build is served) to host port 3000
@@ -52,7 +52,7 @@ services:
       - app-network # Explicitly connect to the network
 
   agent:
-    build: ./agent
+    image: bpdeepak49/system-health-monitor-agent:${IMAGE_TAG}
     container_name: agent_monitoring
     environment:
       # Agent connects to backend service name within the Docker network
