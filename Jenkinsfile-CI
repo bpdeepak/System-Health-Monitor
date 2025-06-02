@@ -48,8 +48,6 @@ pipeline {
             steps {
                 script {
                     sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
-                    // --- IMPORTANT CHANGE FOR FRONTEND BUILD ---
-                    // Pass the backend URL for the browser to use
                     sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} --build-arg REACT_APP_BACKEND_URL=http://${env.DEPLOY_SERVER_IP}:5000 ./frontend"
                     sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
                 }

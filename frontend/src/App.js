@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import DatePicker from 'react-datepicker'; // For date range selection
-import 'react-datepicker/dist/react-datepicker.css'; // DatePicker styles
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -15,15 +15,17 @@ import {
   Title,
   Tooltip,
   Legend,
-  TimeScale, // For time-based charts
+  TimeScale,
 } from 'chart.js';
-import 'chartjs-adapter-date-fns'; // Adapter for date-fns to work with Chart.js time scale
+import 'chartjs-adapter-date-fns';
 
 // Import your authentication and report generator components
 import Auth from './components/Auth';
 import ReportGenerator from './components/ReportGenerator';
-// --- NEW IMPORTS FOR REACT ROUTER ---
+// --- NEW IMPORTS FOR REACT ROUTER AND PRIVATE ROUTE ---
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext'; // Make sure this is imported if useAuth is used directly in App
+import PrivateRoute from './components/PrivateRoute'; // Import the new PrivateRoute component
 // --- END NEW IMPORTS ---
 
 // Register Chart.js components
@@ -36,7 +38,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  TimeScale // Register TimeScale
+  TimeScale
 );
 
 // --- Utility Functions (Keep as is or refine) ---
@@ -49,528 +51,68 @@ function formatUptime(seconds) {
   return `${d}d ${h}h ${m}m ${s}s`;
 }
 
-const decodeJwt = (token) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload).user.role;
-  } catch (e) {
-    console.error("Error decoding JWT:", e);
-    return null;
-  }
-};
-
-// --- Reusable Chart Options ---
-const commonChartOptions = {
-  responsive: true,
-  maintainAspectRatio: false, // Allows flexible sizing
-  plugins: {
-    legend: { position: 'top', labels: { font: { size: 14 } } },
-    tooltip: { mode: 'index', intersect: false, bodyFont: { size: 14 } },
-    title: { display: true, font: { size: 16 } },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      min: 0,
-      max: 100,
-      title: { display: true, text: 'Usage (%)', font: { size: 14 } },
-      ticks: { font: { size: 12 } },
-    },
-    x: {
-      ticks: { font: { size: 12 } },
-    },
-  },
-};
-
-const historicalChartOptions = {
-    ...commonChartOptions,
-    scales: {
-        y: {
-            ...commonChartOptions.scales.y,
-        },
-        x: {
-            type: 'time', // Use time scale for historical data
-            time: {
-                unit: 'hour', // Default unit, will auto-adjust
-                tooltipFormat: 'MMM d, HH:mm:ss',
-                displayFormats: {
-                    hour: 'MMM d, HH:mm',
-                    day: 'MMM d',
-                },
-            },
-            title: { display: true, text: 'Time', font: { size: 14 } },
-            ticks: { font: { size: 12 } },
-        },
-    },
-};
-
-// --- Main App Component ---
-function App() {
-  // Authentication & User State
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [userRole, setUserRole] = useState(null);
-
-  // Latest Metrics State
-  const [latestMetrics, setLatestMetrics] = useState([]);
-  const [latestLoading, setLatestLoading] = useState(true);
-  const [latestError, setLatestError] = useState(null);
-
-  // Historical Metrics State
-  const [historicalMetrics, setHistoricalMetrics] = useState([]);
-  const [historicalLoading, setHistoricalLoading] = useState(false);
-  const [historicalError, setHistoricalError] = useState(null);
-  const [selectedHostname, setSelectedHostname] = useState('');
-  const [historicalStartDate, setHistoricalStartDate] = useState(new Date(Date.now() - 24 * 60 * 60 * 1000)); // Last 24 hours
-  const [historicalEndDate, setHistoricalEndDate] = useState(new Date());
-
-  // --- Auth Handlers ---
-  const handleSetToken = useCallback((newToken) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setUserRole(decodeJwt(newToken));
-    // After successful login/registration, navigate to dashboard
-    // (Auth component should also call navigate internally)
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUserRole(null);
-    setLatestMetrics([]);
-    setHistoricalMetrics([]);
-    setLatestLoading(false);
-    setHistoricalLoading(false);
-    setLatestError(null);
-    setHistoricalError(null);
-    setSelectedHostname('');
-    // After logout, navigate back to login
-    // window.location.href = '/login'; // Or use navigate('/login') if this component has access to it
-  }, []);
-
-  // --- Data Fetching Logic ---
-
-  // Fetch Latest Metrics
-  useEffect(() => {
-    if (!token) {
-      setLatestLoading(false);
-      return;
-    }
-
-    const fetchLatestMetrics = async () => {
-      setLatestLoading(true);
-      setLatestError(null);
-      try {
-        // --- IMPORTANT: Ensure this URL matches your backend service name in docker-compose.yml ---
-        // If your backend is accessed via a specific port and domain, adjust accordingly
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/metrics/latest`, {
-          headers: { 'x-auth-token': token }
-        });
-        setLatestMetrics(response.data);
-        if (!selectedHostname && response.data.length > 0) {
-          setSelectedHostname(response.data[0].hostname); // Default select first host
-        }
-      } catch (err) {
-        console.error("Failed to fetch latest metrics:", err);
-        setLatestError(err.response?.data?.msg || 'Failed to fetch latest metrics.');
-        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          handleLogout(); // Auto-logout on invalid token
-        }
-      } finally {
-        setLatestLoading(false);
-      }
-    };
-
-    fetchLatestMetrics(); // Initial fetch
-    const interval = setInterval(fetchLatestMetrics, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [token, selectedHostname, handleLogout]);
-
-  // Fetch Historical Metrics
-  useEffect(() => {
-    if (!token || !selectedHostname) {
-        setHistoricalMetrics([]);
-        return;
-    }
-
-    const fetchHistoricalMetrics = async () => {
-        setHistoricalLoading(true);
-        setHistoricalError(null);
-        try {
-            const params = {
-                hostname: selectedHostname,
-                startDate: historicalStartDate ? historicalStartDate.toISOString() : undefined,
-                endDate: historicalEndDate ? historicalEndDate.toISOString() : undefined,
-            };
-            // --- IMPORTANT: Ensure this URL matches your backend service name in docker-compose.yml ---
-            const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/metrics/history`, {
-                headers: { 'x-auth-token': token },
-                params: params,
-            });
-            setHistoricalMetrics(response.data);
-        } catch (err) {
-            console.error("Failed to fetch historical metrics:", err);
-            setHistoricalError(err.response?.data?.msg || 'Failed to fetch historical metrics.');
-        } finally {
-            setHistoricalLoading(false);
-        }
-    };
-
-    fetchHistoricalMetrics();
-    // Consider adding a less frequent interval here for historical data if needed,
-    // or keep it manual via a refresh button. For now, it fetches on date/host change.
-  }, [token, selectedHostname, historicalStartDate, historicalEndDate]);
-
-
-  // --- Chart Data Memoization (Performance Optimization) ---
-  const latestChartData = useMemo(() => {
-    const labels = latestMetrics.map((m) => m.hostname);
-    return {
-      cpu: {
-        labels,
-        datasets: [{
-          label: 'CPU Usage (%)',
-          data: latestMetrics.map((m) => m.cpu),
-          backgroundColor: 'rgba(75, 192, 192, 0.8)',
-          borderColor: 'rgba(75, 192, 192, 1)',
-          borderWidth: 1,
-        }],
-      },
-      memory: {
-        labels,
-        datasets: [{
-          label: 'Memory Usage (%)',
-          data: latestMetrics.map((m) => m.memory),
-          backgroundColor: 'rgba(153, 102, 255, 0.8)',
-          borderColor: 'rgba(153, 102, 255, 1)',
-          borderWidth: 1,
-        }],
-      },
-      disk: {
-        labels,
-        datasets: [{
-          label: 'Disk Usage (%)',
-          data: latestMetrics.map((m) => m.disk),
-          backgroundColor: 'rgba(255, 159, 64, 0.8)',
-          borderColor: 'rgba(255, 159, 64, 1)',
-          borderWidth: 1,
-        }],
-      },
-    };
-  }, [latestMetrics]);
-
-  const historicalChartData = useMemo(() => {
-    const labels = historicalMetrics.map(m => new Date(m.timestamp)); // Use Date objects for time scale
-    return {
-      cpu: {
-        labels,
-        datasets: [{
-          label: `CPU Usage for ${selectedHostname} (%)`,
-          data: historicalMetrics.map(m => ({ x: new Date(m.timestamp), y: m.cpu })), // {x, y} format for time series
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 3,
-        }],
-      },
-      memory: {
-        labels,
-        datasets: [{
-          label: `Memory Usage for ${selectedHostname} (%)`,
-          data: historicalMetrics.map(m => ({ x: new Date(m.timestamp), y: m.memory })),
-          borderColor: 'rgba(153, 102, 255, 1)',
-          backgroundColor: 'rgba(153, 102, 255, 0.2)',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 3,
-        }],
-      },
-      disk: {
-        labels,
-        datasets: [{
-          label: `Disk Usage for ${selectedHostname} (%)`,
-          data: historicalMetrics.map(m => ({ x: new Date(m.timestamp), y: m.disk })),
-          borderColor: 'rgba(255, 159, 64, 1)',
-          backgroundColor: 'rgba(255, 159, 64, 0.2)',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 3,
-        }],
-      },
-    };
-  }, [historicalMetrics, selectedHostname]);
-
-  const uniqueHostnames = useMemo(() => [...new Set(latestMetrics.map(m => m.hostname))], [latestMetrics]);
-
-  // --- Rendering Logic - NOW USING REACT ROUTER ---
-  return (
-    <div style={dashboardStyles.container}> {/* This container can wrap your Routes */}
-      <Routes>
-        {/* Route for Login Page */}
-        <Route path="/login" element={<Auth setToken={handleSetToken} />} />
-
-        {/* Route for Registration Page */}
-        <Route path="/register" element={<Auth setToken={handleSetToken} isRegister={true} />} />
-
-        {/* Protected Route for Dashboard - Rendered only if token exists */}
-        {token ? (
-          <Route path="/dashboard" element={
-            <>
-              {/* Header and Logout */}
-              <div style={dashboardStyles.header}>
-                <h1 style={dashboardStyles.title}>System Health Dashboard</h1>
-                <div style={dashboardStyles.userInfo}>
-                  {userRole && <span style={dashboardStyles.userRole}>Role: {userRole}</span>}
-                  <button onClick={handleLogout} style={dashboardStyles.logoutButton}>
-                    Logout
-                  </button>
-                </div>
-              </div>
-
-              {/* Latest Metrics Section */}
-              <div style={dashboardStyles.section}>
-                <h2 style={dashboardStyles.sectionTitle}>Current System Overview</h2>
-                {latestLoading && <div style={dashboardStyles.loadingSpinner}></div>}
-                {latestError && <p style={dashboardStyles.errorMessage}>Error: {latestError}</p>}
-                {!latestLoading && !latestError && latestMetrics.length === 0 && (
-                  <p style={dashboardStyles.noDataMessage}>No live metrics available. Ensure agents are running.</p>
-                )}
-                {!latestLoading && !latestError && latestMetrics.length > 0 && (
-                  <div style={dashboardStyles.gridContainer}>
-                    <div style={dashboardStyles.chartCard}>
-                      <Bar data={latestChartData.cpu} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live CPU Usage by Host" } } }} />
-                    </div>
-                    <div style={dashboardStyles.chartCard}>
-                      <Bar data={latestChartData.memory} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Memory Usage by Host" } } }} />
-                    </div>
-                    <div style={dashboardStyles.chartCard}>
-                      <Bar data={latestChartData.disk} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Disk Usage by Host" } } }} />
-                    </div>
-                  </div>
-                )}
-
-                {!latestLoading && !latestError && latestMetrics.length > 0 && (
-                  <div style={dashboardStyles.systemDetailsTable}>
-                    <h3>Live System Details</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Hostname</th>
-                                <th>OS</th>
-                                <th>Uptime</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {latestMetrics.map(m => (
-                                <tr key={m.hostname}>
-                                    <td>{m.hostname}</td>
-                                    <td>{m.os}</td>
-                                    <td>{formatUptime(m.uptime)}</td>
-                                    <td>{new Date(m.timestamp).toLocaleString()}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Historical Data Section */}
-              <div style={dashboardStyles.section}>
-                <h2 style={dashboardStyles.sectionTitle}>Historical Performance Trends</h2>
-                {latestMetrics.length > 0 && ( // Only show selector if there are hosts
-                  <div style={dashboardStyles.flexContainer}>
-                    <div style={{ marginRight: '20px' }}>
-                      <label htmlFor="hostname-select" style={dashboardStyles.label}>Select Host:</label>
-                      <select
-                        id="hostname-select"
-                        value={selectedHostname}
-                        onChange={(e) => setSelectedHostname(e.target.value)}
-                        style={dashboardStyles.select}
-                      >
-                        {uniqueHostnames.map(host => (
-                          <option key={host} value={host}>{host}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={dashboardStyles.label}>From:</label>
-                      <DatePicker
-                        selected={historicalStartDate}
-                        onChange={(date) => setHistoricalStartDate(date)}
-                        selectsStart
-                        startDate={historicalStartDate}
-                        endDate={historicalEndDate}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        className="custom-datepicker-input" // Add a class for custom styling
-                        wrapperClassName="custom-datepicker-wrapper"
-                      />
-                    </div>
-                    <div>
-                      <label style={dashboardStyles.label}>To:</label>
-                      <DatePicker
-                        selected={historicalEndDate}
-                        onChange={(date) => setHistoricalEndDate(date)}
-                        selectsEnd
-                        startDate={historicalStartDate}
-                        endDate={historicalEndDate}
-                        minDate={historicalStartDate}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        className="custom-datepicker-input" // Add a class for custom styling
-                        wrapperClassName="custom-datepicker-wrapper"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {historicalLoading && <div style={dashboardStyles.loadingSpinner}></div>}
-                {historicalError && <p style={dashboardStyles.errorMessage}>Error: {historicalError}</p>}
-                {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length === 0 && (
-                  <p style={dashboardStyles.noDataMessage}>No historical data available for {selectedHostname} in the selected period.</p>
-                )}
-
-                {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length > 0 && (
-                  <div style={dashboardStyles.gridContainer}>
-                    <div style={dashboardStyles.chartCard}>
-                      <Line data={historicalChartData.cpu} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `CPU Usage Trend for ${selectedHostname}` } } }} />
-                    </div>
-                    <div style={dashboardStyles.chartCard}>
-                      <Line data={historicalChartData.memory} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Memory Usage Trend for ${selectedHostname}` } } }} />
-                    </div>
-                    <div style={dashboardStyles.chartCard}>
-                      <Line data={historicalChartData.disk} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Disk Usage Trend for ${selectedHostname}` } } }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Report Generation Section */}
-              {!latestLoading && !latestError && (
-                <div style={dashboardStyles.section}>
-                  <ReportGenerator token={token} hostnames={uniqueHostnames} />
-                </div>
-              )}
-            </>
-          } />
-        ) : (
-          // If there's no token, redirect any protected route access to /login
-          // This ensures if someone tries to go to /dashboard directly without login, they are sent to /login
-          <Route path="/dashboard" element={<Navigate to="/login" />} />
-        )}
-
-        {/* Catch-all route: Redirects to /dashboard if logged in, otherwise to /login */}
-        {/* This handles direct access to '/' or any undefined path */}
-        <Route path="*" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
-      </Routes>
-    </div>
-  );
-}
-
-// --- Basic Inline Styles (Keep as is) ---
-const dashboardStyles = {
+// Styles (Ensure these are correctly applied, or move to App.css)
+const styles = {
     container: {
+        fontFamily: 'Arial, sans-serif',
+        padding: '20px',
         maxWidth: '1200px',
-        margin: '20px auto',
-        padding: '30px',
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '40px',
+        margin: '0 auto',
+        backgroundColor: '#f4f7f6',
+        minHeight: '100vh',
+        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
     },
     header: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottom: '2px solid #e0e0e0',
-        paddingBottom: '20px',
+        padding: '15px 20px',
+        backgroundColor: '#28a745',
+        color: 'white',
+        borderRadius: '8px',
         marginBottom: '20px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     },
-    title: {
-        fontSize: '2.5em',
-        color: '#333',
+    heading: {
         margin: 0,
-        fontWeight: 'bold',
-    },
-    userInfo: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '15px',
-    },
-    userRole: {
-        fontSize: '1.1em',
-        color: '#555',
-        padding: '5px 10px',
-        backgroundColor: '#e9e9e9',
-        borderRadius: '5px',
+        fontSize: '2em',
     },
     logoutButton: {
         padding: '10px 20px',
+        fontSize: '1em',
         backgroundColor: '#dc3545',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
+        borderRadius: '5px',
         cursor: 'pointer',
-        fontSize: '1em',
         transition: 'background-color 0.3s ease',
     },
-    section: {
-        backgroundColor: '#f8f9fa',
-        padding: '25px',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-    },
-    sectionTitle: {
-        fontSize: '1.8em',
-        color: '#444',
-        marginBottom: '25px',
-        textAlign: 'center',
-        borderBottom: '1px solid #ddd',
-        paddingBottom: '10px',
-    },
-    gridContainer: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '30px',
-        marginTop: '20px',
-    },
-    chartCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: '10px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+    filtersContainer: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '15px',
         padding: '20px',
-        minHeight: '300px', /* Ensure charts have space */
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+        marginBottom: '20px',
+        alignItems: 'center',
+    },
+    filterGroup: {
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
     },
-    systemDetailsTable: {
-        marginTop: '40px',
-        backgroundColor: '#ffffff',
-        borderRadius: '10px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        padding: '20px',
+    filterLabel: {
+        marginBottom: '5px',
+        fontWeight: 'bold',
+        color: '#333',
     },
-    flexContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        gap: '20px',
-        marginBottom: '20px',
-    },
-    label: {
-        fontSize: '1.1em',
-        color: '#555',
-        marginRight: '8px',
+    input: {
+        padding: '10px',
+        borderRadius: '8px',
+        border: '1px solid #ccc',
+        fontSize: '1em',
+        minWidth: '150px',
     },
     select: {
         padding: '10px 15px',
@@ -606,6 +148,37 @@ const dashboardStyles = {
         backgroundColor: '#e9ecef',
         borderRadius: '8px',
     },
+    chartContainer: {
+      marginBottom: '20px',
+      backgroundColor: 'white',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    },
+    metricCardsContainer: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '20px',
+        marginTop: '20px',
+    },
+    metricCard: {
+        backgroundColor: '#e9f7ef',
+        padding: '15px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+        textAlign: 'center',
+    },
+    metricName: {
+        fontSize: '1.1em',
+        fontWeight: 'bold',
+        color: '#28a745',
+        marginBottom: '5px',
+    },
+    metricValue: {
+        fontSize: '1.8em',
+        color: '#333',
+        fontWeight: 'bold',
+    },
 };
 
 // Keyframe for spinner animation (add to your global CSS or directly in JS if using styled-components)
@@ -616,19 +189,311 @@ const dashboardStyles = {
   100% { transform: rotate(360deg); }
 }
 */
-// And for the custom-datepicker-input (add to your global CSS or App.css)
-/*
-.custom-datepicker-input {
-    padding: 10px 15px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 1em;
-    width: 200px;
-    box-sizing: border-box;
+
+
+function App() {
+  const { token, setToken } = useAuth(); // Get token and setToken from context
+
+  const [hostnames, setHostnames] = useState([]);
+  const [metrics, setMetrics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedHostname, setSelectedHostname] = useState('all');
+  const [timeRange, setTimeRange] = useState('24h');
+  const [selectedMetric, setSelectedMetric] = useState('cpuUsage'); // Default selected metric
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  // Memoize chart data to prevent unnecessary re-renders
+  const chartData = useMemo(() => {
+    // Helper to get labels based on timeRange
+    const getLabels = (data) => {
+        if (!data || data.length === 0) return [];
+        return data.map(m => new Date(m.timestamp));
+    };
+
+    const getMetricData = (data, metricKey) => {
+      if (!data || data.length === 0) return [];
+      return data.map(m => m.metrics[metricKey]);
+    };
+
+    const labels = getLabels(metrics);
+    const data = getMetricData(metrics, selectedMetric);
+
+    return {
+      labels: labels,
+      datasets: [
+        {
+          label: selectedMetric === 'cpuUsage' ? 'CPU Usage (%)' :
+                 selectedMetric === 'memoryUsage' ? 'Memory Usage (MB)' :
+                 selectedMetric === 'diskUsage' ? 'Disk Usage (%)' :
+                 selectedMetric === 'networkIo' ? 'Network I/O (MB/s)' : 'Value',
+          data: data,
+          borderColor: selectedMetric === 'cpuUsage' ? 'rgba(75, 192, 192, 1)' :
+                       selectedMetric === 'memoryUsage' ? 'rgba(153, 102, 255, 1)' :
+                       selectedMetric === 'diskUsage' ? 'rgba(255, 159, 64, 1)' :
+                       selectedMetric === 'networkIo' ? 'rgba(54, 162, 235, 1)' : 'rgba(201, 203, 207, 1)',
+          backgroundColor: selectedMetric === 'cpuUsage' ? 'rgba(75, 192, 192, 0.2)' :
+                           selectedMetric === 'memoryUsage' ? 'rgba(153, 102, 255, 0.2)' :
+                           selectedMetric === 'diskUsage' ? 'rgba(255, 159, 64, 0.2)' :
+                           selectedMetric === 'networkIo' ? 'rgba(54, 162, 235, 0.2)' : 'rgba(201, 203, 207, 0.2)',
+          fill: false,
+          tension: 0.1,
+        },
+      ],
+    };
+  }, [metrics, selectedMetric]);
+
+  const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'System Metrics Over Time',
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: timeRange === '24h' || timeRange === '7d' ? 'hour' : 'day', // Adjust unit based on range
+          tooltipFormat: 'MMM d, HH:mm',
+          displayFormats: {
+            hour: 'HH:mm',
+            day: 'MMM d',
+          },
+        },
+        title: {
+          display: true,
+          text: 'Time',
+        },
+      },
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: selectedMetric === 'cpuUsage' ? 'Percentage (%)' :
+                selectedMetric === 'memoryUsage' ? 'Memory (MB)' :
+                selectedMetric === 'diskUsage' ? 'Percentage (%)' :
+                selectedMetric === 'networkIo' ? 'MB/s' : 'Value',
+        },
+      },
+    },
+  }), [selectedMetric, timeRange]);
+
+
+  // Function to fetch metrics
+  const fetchMetrics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = {
+        hostname: selectedHostname === 'all' ? undefined : selectedHostname,
+        timeRange: (startDate && endDate) ? undefined : timeRange, // Use timeRange only if no specific dates
+        startDate: startDate ? startDate.toISOString() : undefined,
+        endDate: endDate ? endDate.toISOString() : undefined,
+      };
+
+      // Ensure axios.get uses backticks for template literals here as well
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/metrics`, {
+        headers: {
+          'x-auth-token': token,
+        },
+        params: params,
+      });
+      setMetrics(response.data);
+    } catch (err) {
+      console.error('Error fetching metrics:', err);
+      setError(err.response?.data?.msg || 'Failed to fetch metrics. Please try again.');
+      setMetrics([]); // Clear previous metrics on error
+    } finally {
+      setLoading(false);
+    }
+  }, [token, selectedHostname, timeRange, startDate, endDate]); // Dependency array
+
+  useEffect(() => {
+    if (token) { // Only fetch metrics if authenticated
+      fetchMetrics();
+      // Fetch hostnames if token is available
+      axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/hosts`, {
+        headers: { 'x-auth-token': token }
+      }).then(response => {
+        setHostnames(['all', ...response.data]);
+      }).catch(err => console.error("Failed to fetch hostnames:", err));
+    } else {
+      // If token becomes null (e.g., on logout), clear data and hostnames
+      setMetrics([]);
+      setHostnames([]);
+    }
+  }, [token, fetchMetrics]); // Dependency array: re-run if token or fetchMetrics changes
+
+  // Helper to calculate latest values
+  const latestMetrics = useMemo(() => {
+    if (!metrics || metrics.length === 0) return {};
+    const latest = metrics[metrics.length - 1]?.metrics || {};
+    return {
+        cpuUsage: latest.cpuUsage ? `${latest.cpuUsage.toFixed(2)}%` : 'N/A',
+        memoryUsage: latest.memoryUsage ? `${(latest.memoryUsage / (1024 * 1024)).toFixed(2)} MB` : 'N/A', // Convert bytes to MB
+        diskUsage: latest.diskUsage ? `${latest.diskUsage.toFixed(2)}%` : 'N/A',
+        networkIo: latest.networkIo ? `${(latest.networkIo / (1024 * 1024)).toFixed(2)} MB/s` : 'N/A', // Convert bytes/s to MB/s
+        uptime: latest.uptime ? formatUptime(latest.uptime) : 'N/A',
+    };
+  }, [metrics]);
+
+  return (
+    <div style={styles.container}>
+      <Routes>
+        {/* Route for Login Page */}
+        <Route path="/login" element={<Auth />} />
+
+        {/* Redirect root ("/") to login if not authenticated, or to dashboard if authenticated */}
+        <Route path="/" element={token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+
+        {/* Protected Dashboard Route */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              {/* Header with Logout Button */}
+              <header style={styles.header}>
+                <h1 style={styles.heading}>System Health Dashboard</h1>
+                <button onClick={() => setToken(null)} style={styles.logoutButton}>Logout</button>
+              </header>
+
+              {/* Filters Section */}
+              <div style={styles.filtersContainer}>
+                <div style={styles.filterGroup}>
+                  <label style={styles.filterLabel}>Hostname:</label>
+                  <select
+                    value={selectedHostname}
+                    onChange={(e) => setSelectedHostname(e.target.value)}
+                    style={styles.select}
+                  >
+                    {hostnames.map((hostname) => (
+                      <option key={hostname} value={hostname}>
+                        {hostname === 'all' ? 'All Hosts' : hostname}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={styles.filterGroup}>
+                  <label style={styles.filterLabel}>Time Range:</label>
+                  <select
+                    value={timeRange}
+                    onChange={(e) => { setTimeRange(e.target.value); setStartDate(null); setEndDate(null); }}
+                    style={styles.select}
+                  >
+                    <option value="1h">Last 1 Hour</option>
+                    <option value="24h">Last 24 Hours</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                  </select>
+                </div>
+
+                <div style={styles.filterGroup}>
+                  <label style={styles.filterLabel}>Metric Type:</label>
+                  <select
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="cpuUsage">CPU Usage</option>
+                    <option value="memoryUsage">Memory Usage</option>
+                    <option value="diskUsage">Disk Usage</option>
+                    <option value="networkIo">Network I/O</option>
+                    <option value="uptime">Uptime</option>
+                  </select>
+                </div>
+
+                <div style={styles.filterGroup}>
+                  <label style={styles.filterLabel}>Start Date:</label>
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date) => { setStartDate(date); setTimeRange('custom'); }}
+                    selectsStart
+                    startDate={startDate}
+                    endDate={endDate}
+                    showTimeSelect
+                    dateFormat="Pp"
+                    className="react-datepicker-custom-input" // Add a class for custom styling if needed
+                    customInput={<input style={styles.input} />} // Apply common input styles
+                  />
+                </div>
+
+                <div style={styles.filterGroup}>
+                  <label style={styles.filterLabel}>End Date:</label>
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date) => { setEndDate(date); setTimeRange('custom'); }}
+                    selectsEnd
+                    startDate={startDate}
+                    endDate={endDate}
+                    minDate={startDate}
+                    showTimeSelect
+                    dateFormat="Pp"
+                    className="react-datepicker-custom-input"
+                    customInput={<input style={styles.input} />} // Apply common input styles
+                  />
+                </div>
+              </div>
+
+              {/* Metrics Display and Charts */}
+              <div style={styles.metricsDisplay}>
+                {loading && <div style={styles.loadingSpinner}></div>}
+                {error && <div style={styles.errorMessage}>{error}</div>}
+                {!loading && !error && metrics.length === 0 && (
+                  <div style={styles.noDataMessage}>No data available for the selected criteria.</div>
+                )}
+                {metrics.length > 0 && !loading && !error && (
+                  <>
+                    {/* Latest Metrics Cards */}
+                    <div style={styles.metricCardsContainer}>
+                        <div style={styles.metricCard}>
+                            <div style={styles.metricName}>CPU Usage</div>
+                            <div style={styles.metricValue}>{latestMetrics.cpuUsage}</div>
+                        </div>
+                        <div style={styles.metricCard}>
+                            <div style={styles.metricName}>Memory Usage</div>
+                            <div style={styles.metricValue}>{latestMetrics.memoryUsage}</div>
+                        </div>
+                        <div style={styles.metricCard}>
+                            <div style={styles.metricName}>Disk Usage</div>
+                            <div style={styles.metricValue}>{latestMetrics.diskUsage}</div>
+                        </div>
+                        <div style={styles.metricCard}>
+                            <div style={styles.metricName}>Network I/O</div>
+                            <div style={styles.metricValue}>{latestMetrics.networkIo}</div>
+                        </div>
+                        <div style={styles.metricCard}>
+                            <div style={styles.metricName}>Uptime</div>
+                            <div style={styles.metricValue}>{latestMetrics.uptime}</div>
+                        </div>
+                    </div>
+
+                    {/* Metric Chart */}
+                    <div style={styles.chartContainer}>
+                      <Line data={chartData} options={chartOptions} />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Report Generator */}
+              <ReportGenerator token={token} hostnames={hostnames} />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Fallback for any other undefined paths - redirect to /login if not authenticated, or /dashboard if authenticated */}
+        <Route path="*" element={token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+      </Routes>
+    </div>
+  );
 }
-.custom-datepicker-wrapper {
-    width: auto;
-}
-*/
 
 export default App;
