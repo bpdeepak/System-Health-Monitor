@@ -1,5 +1,4 @@
 # docker-compose.yml (Place this in the root of your Git repository)
-version: '3.8' # You can remove this line if your Docker Compose is v2+, it's just a warning.
 
 services:
   mongo:

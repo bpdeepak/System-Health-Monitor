@@ -91,8 +91,8 @@ pipeline {
                         docker compose down --remove-orphans
 
                         echo "Starting new containers with Docker Compose..."
-                        export HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}"
-                        export IMAGE_TAG="${env.IMAGE_TAG}"
+                        echo "IMAGE_TAG=${env.IMAGE_TAG}" > .env
+                        echo "HOSTNAME_FOR_AGENT_TAG=${env.HOSTNAME_FOR_AGENT_TAG}" >> .env
                         docker compose up -d
 
                         echo "Cleaning up old Docker images locally (optional)..."
