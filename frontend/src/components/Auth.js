@@ -1,7 +1,6 @@
 // frontend/src/components/Auth.js
 import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Auth = () => {
@@ -9,106 +8,98 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user'); // Default role for registration
   const [isRegister, setIsRegister] = useState(false);
-  const [message, setMessage] = useState(''); // For success messages
-  const [error, setError] = useState('');   // For error messages
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const { setToken } = useAuth();
+  const { login } = useAuth(); // Use the login function from AuthContext
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(''); // Clear previous success messages
-    setError('');   // Clear previous error messages
+    setError('');
+    setSuccess('');
 
     try {
       let response;
       if (isRegister) {
-        // --- CORRECTED: Using backticks (`) for template literal ---
-        response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, { username, password, role });
-        setMessage('User registered successfully');
-        setIsRegister(false); // Switch to login form after successful registration
-        setUsername(''); // Clear form fields
-        setPassword('');
-        setRole('user'); // Reset role
-      } else { // This is a login attempt
-        // --- CORRECTED: Using backticks (`) for template literal ---
-        response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, { username, password });
-        setToken(response.data.token);
-        setMessage('Success! Redirecting...');
-        setTimeout(() => { navigate('/dashboard'); }, 1000); // Navigate to /dashboard as per App.js Routes
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setSuccess(data.msg || 'Registration successful! You can now log in.');
+          setIsRegister(false); // Switch to login form
+          setUsername(''); // Clear form fields
+          setPassword('');
+          setRole('user'); // Reset role
+        } else {
+          setError(data.msg || (data.errors && data.errors.length > 0 ? data.errors.join(', ') : 'Registration failed'));
+        }
+      } else { // Login
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          login(data.token, data.user ? data.user.role : 'user'); // Use login from context
+          navigate('/dashboard');
+        } else {
+          setError(data.msg || 'Login failed');
+        }
       }
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else if (err.response && err.response.data && err.response.data.msg) {
-        setError(err.response.data.msg);
-      } else {
-        setError(`${isRegister ? 'Registration' : 'Authentication'} failed. Please try again.`);
-      }
+      console.error(`${isRegister ? 'Registration' : 'Login'} error:`, err);
+      setError(`An error occurred during ${isRegister ? 'registration' : 'login'}. Please try again.`);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2 style={{ textAlign: 'center' }}>{isRegister ? 'Register' : 'Login'}</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="username">Username:</label>
+    <div className="auth-container">
+      <h2>{isRegister ? 'Register' : 'Login'}</h2>
+      <form onSubmit={handleSubmit} className="auth-form">
+        {error && <p className="error-message">{error}</p>}
+        {success && <p className="success-message">{success}</p>}
+        <div className="form-group">
+          <label>Username:</label>
           <input
-            id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="password">Password:</label>
+        <div className="form-group">
+          <label>Password:</label>
           <input
-            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
         {isRegister && (
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="role">Role:</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            >
+          <div className="form-group">
+            <label>Role:</label>
+            <select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
           </div>
         )}
-        {message && <p style={{ color: 'green', textAlign: 'center' }}>{message}</p>}
-        {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>
-          {isRegister ? 'Register' : 'Login'}
-        </button>
+        <button type="submit" className="btn-primary">{isRegister ? 'Register' : 'Login'}</button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '15px' }}>
+      <p>
         {isRegister ? (
           <>
-            Already have an account?{' '}
-            <span onClick={() => setIsRegister(false)} style={{ color: '#007bff', cursor: 'pointer' }}>
-              Login
-            </span>
+            Already have an account? <span onClick={() => setIsRegister(false)} className="link-style">Login here</span>
           </>
         ) : (
           <>
-            Don't have an account?{' '}
-            <span onClick={() => setIsRegister(true)} style={{ color: '#007bff', cursor: 'pointer' }}>
-              Register
-            </span>
+            Don't have an account? <span onClick={() => setIsRegister(true)} className="link-style">Register here</span>
           </>
         )}
       </p>

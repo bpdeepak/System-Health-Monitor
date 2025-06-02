@@ -2,20 +2,21 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import axios from 'axios';
 import Auth from '../components/Auth';
 
-jest.mock('axios');
-
+// Mock react-router-dom's useNavigate
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  Link: ({ to, children }) => <a href={to}>{children}</a>, // Mock Link component
 }));
 
-const mockSetToken = jest.fn();
+// Mock AuthContext's useAuth hook
+const mockLogin = jest.fn();
 jest.mock('../context/AuthContext', () => ({
   useAuth: () => ({
-    setToken: mockSetToken,
+    login: mockLogin,
+    // Add other context values if Auth component were to use them, e.g., logout
   }),
 }));
 
@@ -24,28 +25,35 @@ describe('Auth Component', () => {
 
   beforeEach(() => {
     user = userEvent.setup();
-    axios.post.mockClear();
     mockNavigate.mockClear();
-    mockSetToken.mockClear();
+    mockLogin.mockClear();
 
-    // Mock localStorage
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        setItem: jest.fn(),
-        getItem: jest.fn(() => null),
-        removeItem: jest.fn(),
-      },
-      writable: true,
+    // Mock global fetch
+    // Reset fetch mock before each test to ensure a clean slate
+    global.fetch = jest.fn((url, options) => {
+      if (url.includes('/api/auth/login')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ token: 'mock-token', user: { role: 'user' } }),
+        });
+      } else if (url.includes('/api/auth/register')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ msg: 'Registration successful!' }),
+        });
+      }
+      return Promise.reject(new Error('Unknown fetch call'));
     });
 
     // Mock process.env.REACT_APP_BACKEND_URL for tests
-    // This is crucial because your component now relies on it
-    process.env.REACT_APP_BACKEND_URL = 'http://test-backend:5000'; // Or any dummy URL for tests
+    process.env.REACT_APP_BACKEND_URL = 'http://test-backend:5000';
   });
 
-  // afterEach to clean up mocked env var if other tests rely on a clean slate
   afterEach(() => {
+    // Clean up mocked env var
     delete process.env.REACT_APP_BACKEND_URL;
+    // Clear fetch mocks
+    jest.clearAllMocks();
   });
 
   test('renders login form by default', () => {
@@ -56,9 +64,9 @@ describe('Auth Component', () => {
     expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
   });
 
-  test('switches to register form when "Register" link is clicked', async () => {
+  test('switches to register form when "Register here" link is clicked', async () => {
     render(<Auth />);
-    const registerLink = screen.getByText(/Register$/i);
+    const registerLink = screen.getByText(/Register here/i);
     await user.click(registerLink);
 
     expect(screen.getByRole('heading', { name: /register/i })).toBeInTheDocument();
@@ -66,11 +74,10 @@ describe('Auth Component', () => {
     expect(screen.getByLabelText(/password:/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/role:/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /register/i })).toBeInTheDocument();
-    expect(screen.getByText(/Already have an account?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Already have an account\?/i)).toBeInTheDocument();
   });
 
   test('handles successful login', async () => {
-    axios.post.mockResolvedValueOnce({ data: { token: 'mock-token' } });
     render(<Auth />);
 
     await user.type(screen.getByLabelText(/username:/i), 'testuser');
@@ -78,22 +85,32 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => {
-      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
-      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
-        username: 'testuser',
-        password: 'password123',
-      });
-      expect(mockSetToken).toHaveBeenCalledWith('mock-token');
-      expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
-      // Ensure navigate is called with /dashboard, not /
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/login`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ username: 'testuser', password: 'password123' }),
+        })
+      );
+      // Ensure mockLogin was called with the token and role
+      expect(mockLogin).toHaveBeenCalledWith('mock-token', 'user');
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
-    }, { timeout: 2000 });
+    });
   });
 
   test('handles failed login', async () => {
-    axios.post.mockRejectedValueOnce({
-      response: { data: { msg: 'Invalid credentials' } },
+    // Adjust fetch mock for this specific test case
+    global.fetch.mockImplementationOnce((url, options) => {
+      if (url.includes('/api/auth/login')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ msg: 'Invalid credentials' }),
+        });
+      }
+      return Promise.reject(new Error('Unknown fetch call'));
     });
+
     render(<Auth />);
 
     await user.type(screen.getByLabelText(/username:/i), 'wronguser');
@@ -101,24 +118,24 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => {
-      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
-      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
-        username: 'wronguser',
-        password: 'wrongpass',
-      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/login`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ username: 'wronguser', password: 'wrongpass' }),
+        })
+      );
       expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
     });
 
-    expect(mockSetToken).not.toHaveBeenCalled();
-    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   test('handles successful registration', async () => {
-    axios.post.mockResolvedValueOnce({ data: { msg: 'User registered successfully' } });
     render(<Auth />);
 
-    const registerLink = screen.getByText(/Register$/i);
+    const registerLink = screen.getByText(/Register here/i);
     await user.click(registerLink);
 
     await user.type(screen.getByLabelText(/username:/i), 'newuser');
@@ -127,28 +144,37 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
-      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
-        username: 'newuser',
-        password: 'newpassword',
-        role: 'admin',
-      });
-      expect(screen.getByText(/User registered successfully/i)).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/register`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ username: 'newuser', password: 'newpassword', role: 'admin' }),
+        })
+      );
+      expect(screen.getByText(/Registration successful! You can now log in./i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument(); // Should switch back to login
     });
 
-    expect(mockSetToken).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(localStorage.setItem).not.toHaveBeenCalled();
   });
 
   test('handles failed registration', async () => {
-    axios.post.mockRejectedValueOnce({
-      response: { data: { msg: 'Username already exists' } },
+    // Adjust fetch mock for this specific test case
+    global.fetch.mockImplementationOnce((url, options) => {
+      if (url.includes('/api/auth/register')) {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ msg: 'Username already exists' }),
+        });
+      }
+      return Promise.reject(new Error('Unknown fetch call'));
     });
+
     render(<Auth />);
 
-    const registerLink = screen.getByText(/Register$/i);
+    const registerLink = screen.getByText(/Register here/i);
     await user.click(registerLink);
 
     await user.type(screen.getByLabelText(/username:/i), 'existinguser');
@@ -156,17 +182,17 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
-      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
-        username: 'existinguser',
-        password: 'password',
-        role: 'user',
-      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/register`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ username: 'existinguser', password: 'password', role: 'user' }), // Default role
+        })
+      );
       expect(screen.getByText(/Username already exists/i)).toBeInTheDocument();
     });
 
-    expect(mockSetToken).not.toHaveBeenCalled();
-    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
