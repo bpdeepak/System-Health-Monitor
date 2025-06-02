@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Metric = require('../models/Metric'); // Assuming you have this model
-const { generateReport } = require('../utils/reportGenerator');
+const { generateReport } = require('../utils/reportGenerator'); // Assuming you have this utility
 const authMiddleware = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
@@ -27,7 +27,7 @@ router.get('/generate', authMiddleware, authorize(['user', 'admin']), async (req
     }
 
     try {
-        console.log('Backend Query:', JSON.stringify(query, null, 2));
+        console.log('Backend Query for Report:', JSON.stringify(query, null, 2));
         // Fetch metrics for the report. You might want to limit the time range
         // or the number of metrics for very large datasets to prevent OOM errors.
         const metrics = await Metric.find(query).sort({ timestamp: 1 });
