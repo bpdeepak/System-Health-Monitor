@@ -91,8 +91,9 @@ pipeline {
                         docker compose down --remove-orphans
 
                         echo "Starting new containers with Docker Compose..."
-                        docker compose --env HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}" --env IMAGE_TAG="${env.IMAGE_TAG}" up -d --build=false
-                        docker compose up -d --build=false
+                        export HOSTNAME_FOR_AGENT_TAG="${env.HOSTNAME_FOR_AGENT_TAG}"
+                        export IMAGE_TAG="${env.IMAGE_TAG}"
+                        docker compose up -d
 
                         echo "Cleaning up old Docker images locally (optional)..."
                         docker image prune -f
