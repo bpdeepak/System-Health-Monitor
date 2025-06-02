@@ -1,37 +1,55 @@
-// frontend/src/components/Auth.js (assuming the relevant JSX)
-
-import React, { useState } from 'react';
+// frontend/src/components/Auth.js
+import React, { useState } from 'react'; // Ensure useState is imported
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Assuming this provides setToken
 
-function Auth({ setToken }) {
-  const [isRegister, setIsRegister] = useState(false);
+const Auth = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user'); // Default role
-  const [message, setMessage] = useState('');
+  const [role, setRole] = useState('user'); // Default role for registration
+  const [isRegister, setIsRegister] = useState(false);
+  const [message, setMessage] = useState(''); // For success messages
+  const [error, setError] = useState('');   // For error messages
+
+  const { setToken } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(''); // Clear previous messages
+    setMessage(''); // Clear previous success messages
+    setError('');   // Clear previous error messages
+
     try {
       let response;
       if (isRegister) {
         response = await axios.post('http://localhost:5000/api/auth/register', { username, password, role });
-        setMessage('Registration successful! Redirecting...');
-      } else {
+        // For successful registration:
+        // 1. Set a success message for the user.
+        // 2. Do NOT set a token unless registration automatically logs them in (which your test implies it doesn't).
+        // 3. You might want to switch to the login form after successful registration.
+        setMessage('User registered successfully'); // Test expects this
+        setIsRegister(false); // Switch to login form
+        setUsername(''); // Clear form fields
+        setPassword('');
+        setRole('user'); // Reset role
+      } else { // This is a login attempt
         response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
-        setMessage('Success! Redirecting...');
+        setToken(response.data.token); // ONLY set token on successful LOGIN
+        setMessage('Success! Redirecting...'); // Test expects this
+        setTimeout(() => { navigate('/'); }, 1000); // Navigate to dashboard after delay
       }
-      setToken(response.data.token);
-      // In a real app, you'd redirect here, e.g., using react-router-dom
-      // setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
-    } catch (error) {
-      if (error.response && error.response.data && error.response.data.msg) {
-        setMessage(`${isRegister ? 'Registration' : 'Authentication'} failed: ${error.response.data.msg}`);
+    } catch (err) { // Renamed error to err to avoid conflict with 'error' state
+      // Set an error message based on API response or a generic one
+      if (err.response && err.response.data && err.response.data.message) { // Backend often sends 'message'
+        setError(err.response.data.message);
+      } else if (err.response && err.response.data && err.response.data.msg) { // Fallback to 'msg'
+        setError(err.response.data.msg);
       } else {
-        setMessage(`${isRegister ? 'Registration' : 'Authentication'} failed. Please try again.`);
+        setError(`${isRegister ? 'Registration' : 'Authentication'} failed. Please try again.`);
       }
-      setToken(null); // Clear token on failure
+      // IMPORTANT: Do NOT call setToken(null) here for failed attempts.
+      // The test expects mockSetToken NOT to be called AT ALL on failure.
     }
   };
 
@@ -40,11 +58,10 @@ function Auth({ setToken }) {
       <h2 style={{ textAlign: 'center' }}>{isRegister ? 'Register' : 'Login'}</h2>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '15px' }}>
-          {/* Add htmlFor and id for accessibility */}
           <label htmlFor="username">Username:</label>
           <input
+            id="username" // Ensure id is present for accessibility and testing
             type="text"
-            id="username" // ADD THIS LINE
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
@@ -52,11 +69,10 @@ function Auth({ setToken }) {
           />
         </div>
         <div style={{ marginBottom: '15px' }}>
-          {/* Add htmlFor and id for accessibility */}
           <label htmlFor="password">Password:</label>
           <input
+            id="password" // Ensure id is present
             type="password"
-            id="password" // ADD THIS LINE
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -65,10 +81,9 @@ function Auth({ setToken }) {
         </div>
         {isRegister && (
           <div style={{ marginBottom: '15px' }}>
-            {/* Add htmlFor and id for accessibility */}
             <label htmlFor="role">Role:</label>
             <select
-              id="role" // ADD THIS LINE
+              id="role" // Ensure id is present
               value={role}
               onChange={(e) => setRole(e.target.value)}
               style={{ width: '100%', padding: '8px', marginTop: '5px' }}
@@ -78,25 +93,33 @@ function Auth({ setToken }) {
             </select>
           </div>
         )}
-        <button
-          type="submit"
-          style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-        >
+        {/* Render success/error messages */}
+        {message && <p style={{ color: 'green', textAlign: 'center' }}>{message}</p>}
+        {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+
+        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>
           {isRegister ? 'Register' : 'Login'}
         </button>
       </form>
       <p style={{ textAlign: 'center', marginTop: '15px' }}>
-        {isRegister ? "Already have an account?" : "Don't have an account?"}{' '}
-        <span
-          onClick={() => setIsRegister(!isRegister)}
-          style={{ color: '#007bff', cursor: 'pointer' }}
-        >
-          {isRegister ? 'Login' : 'Register'}
-        </span>
+        {isRegister ? (
+          <>
+            Already have an account?{' '}
+            <span onClick={() => setIsRegister(false)} style={{ color: '#007bff', cursor: 'pointer' }}>
+              Login
+            </span>
+          </>
+        ) : (
+          <>
+            Don't have an account?{' '}
+            <span onClick={() => setIsRegister(true)} style={{ color: '#007bff', cursor: 'pointer' }}>
+              Register
+            </span>
+          </>
+        )}
       </p>
-      {message && <p style={{ textAlign: 'center', color: message.includes('failed') ? 'red' : 'green' }}>{message}</p>}
     </div>
   );
-}
+};
 
 export default Auth;
