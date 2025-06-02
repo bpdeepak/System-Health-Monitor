@@ -1,30 +1,25 @@
 // frontend/src/App.test.js
 
-// Ensure this line is still present and the file is in frontend/__mocks__/recharts.js
-// No explicit jest.mock('recharts'); needed here due to craco.config.js
+// No jest.mock('recharts'); needed here due to craco.config.js
+
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-// Import MemoryRouter to simulate browser routing in tests
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+// MemoryRouter is NOT imported here because App.js provides its own Router
 import App from './App'; // Assuming App.js is in the same directory
 
-// Mock react-router-dom hooks (useNavigate, Link) but NOT the routing components (BrowserRouter, Routes, Route)
+// Mock react-router-dom hooks (useNavigate, Link) but NOT the routing components (Router, Routes, Route)
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'), // Keep actual implementations for components
   useNavigate: jest.fn(),
   Link: ({ children, to }) => <a href={to}>{children}</a>,
-  // REMOVE BROWSERROUTER, ROUTES, ROUTE MOCKS HERE
-  // BrowserRouter: ({ children }) => <div>{children}</div>,
-  // Routes: ({ children }) => <div>{children}</div>,
-  // Route: ({ children }) => <div>{children}</div>,
 }));
 
-// Mock the AuthContext (as previously configured)
+// Mock the AuthContext
 jest.mock('../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
-// Mock localStorage (as previously configured)
+// Mock localStorage
 Object.defineProperty(window, 'localStorage', {
   value: {
     setItem: jest.fn(),
@@ -47,53 +42,47 @@ describe('App component', () => {
     localStorage.clear();
   });
 
-  test('renders login page if not authenticated and on /login route', async () => {
+  // This test will now implicitly start at the root path (/) and rely on App.js's routing logic
+  test('renders login page if not authenticated (default route)', async () => {
     useAuth.mockImplementation(() => ({
       token: null, // Unauthenticated
+      // As AuthContext.js does not expose isAuthenticated directly, we mock it based on token
+      isAuthenticated: false,
       setToken: jest.fn(),
     }));
 
-    render(
-      <MemoryRouter initialEntries={['/login']}> {/* Simulate starting at /login */}
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />); // Render App directly, as it contains BrowserRouter
 
-    // Use findByRole because rendering might be asynchronous due to routing
+    // Assuming App.js will redirect to /login or render LoginPage component on unauthenticated default route
     expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
   });
 
-  test('renders Dashboard if authenticated and on /dashboard route', async () => {
+  // This test will now implicitly start at the root path (/) and rely on App.js's routing logic
+  test('renders Dashboard if authenticated (default route)', async () => {
     useAuth.mockImplementation(() => ({
       token: 'mock-auth-token', // Authenticated
+      // As AuthContext.js does not expose isAuthenticated directly, we mock it based on token
+      isAuthenticated: true,
       setToken: jest.fn(),
     }));
 
-    render(
-      <MemoryRouter initialEntries={['/dashboard']}> {/* Simulate starting at /dashboard */}
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />); // Render App directly
 
-    // Use findByRole because rendering might be asynchronous due to routing
+    // Assuming App.js will redirect to /dashboard or render Dashboard component on authenticated default route
     expect(await screen.findByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
   });
 
-  // You might want a test for the root path '/' when unauthenticated,
-  // expecting it to redirect to /login or render the Auth component directly.
-  test('redirects to login on root path if not authenticated', async () => {
+  // This test essentially covers the same scenario as the first test if App.js redirects '/' to '/login'
+  test('redirects to login on root path if not authenticated (alternative initial path)', async () => {
     useAuth.mockImplementation(() => ({
       token: null, // Unauthenticated
+      isAuthenticated: false,
       setToken: jest.fn(),
     }));
 
-    render(
-      <MemoryRouter initialEntries={['/']}> {/* Simulate starting at / */}
-        <App />
-      </MemoryRouter>
-    );
-    // Since App.js likely uses <Navigate to="/login" /> or similar,
-    // it should eventually render the login page.
+    // Rendering <App /> will default to the '/' path.
+    // If your app automatically redirects to /login from '/', this test passes.
+    render(<App />);
     expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
   });
 });
