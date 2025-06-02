@@ -39,7 +39,7 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh 'npm install'
-                    sh 'npm test -- --ci --watchAll=false'
+                    sh 'npm test -- --ci --watchAll=false --verbose'
                     sh 'npm run build' // Build frontend assets
                 }
             }
