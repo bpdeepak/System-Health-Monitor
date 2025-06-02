@@ -23,8 +23,8 @@ before(async () => {
     // Connect to the test database
     try {
       await mongoose.connect(testMongoUri, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+        useNewUrlParser: true, // These are deprecated warnings, not errors.
+        useUnifiedTopology: true, // These are deprecated warnings, not errors.
       });
       console.log(`Connected to test MongoDB for Metrics API tests: ${mongoose.connection.name}`);
     } catch (err) {
@@ -79,7 +79,7 @@ before(async () => {
       .send(mockMetric);
 
     expect(res.statusCode).to.equal(201);
-    expect(res.body).to.have.property('msg').equal('Metric added successfully');
+    expect(res.body).to.have.property('message').equal('Metric saved'); // CHANGED from 'msg' to 'message'
     const savedMetric = await Metric.findOne({ hostname: 'test-host-1' });
     expect(savedMetric).to.exist;
     expect(savedMetric.cpu).to.equal(mockMetric.cpu);
@@ -94,8 +94,7 @@ before(async () => {
 
     expect(res.statusCode).to.equal(400);
     expect(res.body).to.have.property('errors');
-    // Change this line:
-    expect(res.body.errors[0]).to.include('Cast to Number failed for value "not-a-number" (type string) at path "cpu"'); // Expect the direct string message
+    expect(res.body.errors[0]).to.include('Cast to Number failed for value "not-a-number" (type string) at path "cpu"');
   });
 
   it('should allow authenticated users to get latest metrics', async () => {
@@ -122,7 +121,7 @@ before(async () => {
     await new Metric(host2Metric).save();
 
     const res = await request(server)
-      .get('/api/metrics/history?hostname=history-host')
+      .get('/api/metrics?hostname=history-host&timeRange=24h') // UPDATED path and added timeRange parameter
       .set('x-auth-token', userToken);
 
     expect(res.statusCode).to.equal(200);
@@ -141,7 +140,7 @@ before(async () => {
 
     await new Metric(host1Metric1).save();
     await new Metric(host1Metric2).save();
-    await new Metric(host1Metric3).save(); // You had three metrics, but only two passed in previous turn, so this one might be the issue.
+    await new Metric(host1Metric3).save();
 
     const startDate = new Date(now.getTime() - 5400000); // 1.5 hours ago
     const endDate = new Date(now.getTime() - 900000); // 15 mins ago
@@ -154,18 +153,51 @@ before(async () => {
     console.log(`  Query End Date: ${endDate.toISOString()}`);
 
     const res = await request(server)
-          .get(`/api/metrics/history?hostname=date-test&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+          .get(`/api/metrics?hostname=date-test&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`) // UPDATED path
           .set('x-auth-token', userToken);
 
-    console.log('API Response Status Code:', res.statusCode); // ADD THIS
-        console.log('API Response Body:', JSON.stringify(res.body, null, 2)); // ADD THIS
-        if (Array.isArray(res.body)) { // Check if it's an array before forEach
-            console.log('API Response Body Timestamps:');
-            res.body.forEach(metric => console.log(`  - ${metric.timestamp}`));
-            expect(res.body).to.have.lengthOf(1); // Keep your original assertion
-        } else {
-            console.log('Response body was not an array. Cannot log timestamps.');
-            expect.fail('Response body was not an array, indicating an API error.'); // Fail the test if not an array
-        }
+    console.log('API Response Status Code:', res.statusCode);
+    console.log('API Response Body:', JSON.stringify(res.body, null, 2));
+    if (Array.isArray(res.body)) {
+        console.log('API Response Body Timestamps:');
+        res.body.forEach(metric => console.log(`  - ${metric.timestamp}`));
+        expect(res.body).to.have.lengthOf(1); // Expecting only Metric2 to be in this range
+    } else {
+        console.log('Response body was not an array. Cannot log timestamps.');
+        expect.fail('Response body was not an array, indicating an API error.');
+    }
+  });
+
+  it('should allow authenticated users to get unique hostnames', async () => {
+    await new Metric({ ...mockMetric, hostname: 'hostA' }).save();
+    await new Metric({ ...mockMetric, hostname: 'hostB' }).save();
+    await new Metric({ ...mockMetric, hostname: 'hostA' }).save(); // Duplicate hostname
+
+    const res = await request(server)
+      .get('/api/hosts')
+      .set('x-auth-token', userToken);
+
+    expect(res.statusCode).to.equal(200);
+    expect(res.body).to.be.an('array').with.lengthOf(3); // ['all', 'hostA', 'hostB']
+    expect(res.body).to.include('all');
+    expect(res.body).to.include('hostA');
+    expect(res.body).to.include('hostB');
+  });
+
+  it('should return 401 if no token is provided for protected routes', async () => {
+    const res = await request(server)
+      .get('/api/metrics'); // No token provided
+
+    expect(res.statusCode).to.equal(401);
+    expect(res.body).to.have.property('msg').equal('No token, authorization denied');
+  });
+
+  it('should return 401 if invalid token is provided for protected routes', async () => {
+    const res = await request(server)
+      .get('/api/metrics')
+      .set('x-auth-token', 'invalid_token');
+
+    expect(res.statusCode).to.equal(401);
+    expect(res.body).to.have.property('msg').equal('Token is not valid');
   });
 });
