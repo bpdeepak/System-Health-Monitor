@@ -19,29 +19,12 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.27.2",
-    "@babel/preset-react": "^7.27.1",
-    "babel-jest": "^30.0.0-beta.3",
-    "jest": "^30.0.0-beta.3",
-    "jest-environment-jsdom": "^30.0.0-beta.3"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
-  },
-  "jest": {
-    "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": [
-      "<rootDir>/src/setupTests.js"
-    ],
-    "transform": {
-      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "babel-jest"
-    },
-    "transformIgnorePatterns": [
-      "/node_modules/(?!axios)/"
-    ]
   },
   "eslintConfig": {
     "extends": [

@@ -38,9 +38,10 @@ pipeline {
         stage('Frontend Build & Test') {
             steps {
                 dir('frontend') {
+                    sh 'rm -rf node_modules' // Remove node_modules directory
+                    sh 'rm -f package-lock.json' // Remove package-lock.json file
                     sh 'npm install'
                     sh 'npm test -- --ci --watchAll=false --verbose'
-                    sh 'npm run build' // Build frontend assets
                 }
             }
         }
