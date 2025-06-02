@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react'; // Import 'act'
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import Auth from '../components/Auth';
@@ -37,14 +37,12 @@ describe('Auth Component', () => {
       writable: true,
     });
 
-    // Enable Jest's fake timers
-    jest.useFakeTimers();
+    // --- REMOVED: jest.useFakeTimers();
   });
 
   afterEach(() => {
-    // Restore real timers after each test
-    jest.runOnlyPendingTimers(); // Run any remaining timers to avoid leaks
-    jest.useRealTimers();
+    // --- REMOVED: jest.runOnlyPendingTimers();
+    // --- REMOVED: jest.useRealTimers();
   });
 
   test('renders login form by default', () => {
@@ -76,7 +74,7 @@ describe('Auth Component', () => {
     await user.type(screen.getByLabelText(/password:/i), 'password123');
     await user.click(screen.getByRole('button', { name: /login/i }));
 
-    // Wait for the success message to appear and ensure the navigation happens
+    // This waitFor will now check for both the success message AND the navigation
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
         username: 'testuser',
@@ -84,16 +82,11 @@ describe('Auth Component', () => {
       });
       expect(mockSetToken).toHaveBeenCalledWith('mock-token');
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
+      // Crucially, expect navigate to be called here too
+      expect(mockNavigate).toHaveBeenCalledWith('/');
     });
 
-    // Now, advance timers if there's a setTimeout for navigation
-    // Use act to ensure React updates are processed after advancing timers
-    await act(async () => {
-      jest.runAllTimers(); // This will run any setTimeout that was initiated
-    });
-
-    // After advancing timers, check if navigation happened
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    // --- REMOVED: await act(async () => { jest.runAllTimers(); });
   });
 
 
