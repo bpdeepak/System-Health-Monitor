@@ -1,24 +1,24 @@
-# docker-compose.yml (Place this in the root of your Git repository)
+version: '3.8'
 
 services:
   mongo:
     image: mongo:latest
     container_name: mongodb_monitoring
     ports:
-      - "27018:27017" # Host:Container port. Keep this if no local Mongo is running on 27017.
-                      # If local Mongo is running, change to, e.g., "27018:27017"
+      - "27017:27017" # Exposed port on host for direct access if needed, maps to container's 27017
     volumes:
       - mongodb_data:/data/db
     networks:
-      - app-network # Explicitly connect to the network
-    healthcheck: # <-- NEW: Healthcheck for MongoDB robustness
+      - app-network
+    healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh --port 27017 --quiet
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s # Give Mongo more time to start up and become healthy
 
   backend:
-    image: bpdeepak49/system-health-monitor-backend:${IMAGE_TAG} 
+    image: bpdeepak49/system-health-monitor-backend:${IMAGE_TAG}
     container_name: backend_monitoring
     ports:
       - "5000:5000"
@@ -28,46 +28,74 @@ services:
       JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
       mongo:
-        condition: service_healthy # <-- NEW: Wait for Mongo to be healthy
+        condition: service_healthy
     restart: always
     networks:
-      - app-network # Explicitly connect to the network
+      - app-network
 
   frontend:
     image: bpdeepak49/system-health-monitor-frontend:${IMAGE_TAG}
     container_name: frontend_monitoring
+    # Corrected Port Mapping: Frontend can't use 3000 if Grafana does.
+    # Changed frontend to 3001 on the host.
     ports:
-      - "3000:80" # Map container port 80 (where React build is served) to host port 3000
+      - "3001:80" # Map container port 80 (where React build is served) to host port 3001
     environment:
       # IMPORTANT: If your frontend (React) code makes API calls directly from the browser
       # it needs to know the *public* URL of your backend.
-      # If running on the same host, it's often http://localhost:5000
-      # If your frontend container itself makes backend calls, it needs http://backend:5000
-      REACT_APP_BACKEND_URL: http://13.48.48.96:5000 # Use this if accessing from browser on host
+      REACT_APP_BACKEND_URL: http://13.48.48.96:5000 # This should be the public IP/DNS of your EC2 instance and port 5000
     depends_on:
       - backend # This is for container start order, not always for API readiness
     restart: always
     networks:
-      - app-network # Explicitly connect to the network
+      - app-network
 
   agent:
     image: bpdeepak49/system-health-monitor-agent:${IMAGE_TAG}
     container_name: agent_monitoring
     environment:
-      # Agent connects to backend service name within the Docker network
-      API_ENDPOINT: http://backend:5000/api/metrics # This is correct for inter-container
-      # Add HOSTNAME for agent if you want it unique
-      HOSTNAME: agent-${HOSTNAME_FOR_AGENT_TAG} # Define HOSTNAME_FOR_AGENT_TAG in Jenkinsfile
+      API_ENDPOINT: http://backend:5000/api/metrics # This is correct for inter-container communication
+      HOSTNAME: agent-${HOSTNAME_FOR_AGENT_TAG:-default} # Use a default if HOSTNAME_FOR_AGENT_TAG is not set
       JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
       - backend
     restart: always
     networks:
-      - app-network # Explicitly connect to the network
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro # Use read-only mount
+      - prometheus_data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver --web.enable-lifecycle
+    ports:
+      - "9090:9090" # Prometheus web UI
+    # Prometheus can technically start without the backend being ready,
+    # it just won't find targets immediately. No strong `depends_on` needed for function.
+    restart: unless-stopped
+    networks:
+      - app-network # Ensure Prometheus is on the same network to scrape backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000" # Grafana web UI will now be on host port 3000
+    depends_on:
+      - prometheus # Grafana needs Prometheus to be running to fetch data
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
-  mongodb_data: # Define the named volume for MongoDB data persistence
+  mongodb_data:
+  prometheus_data:
+  grafana_data:
 
-networks: # <-- NEW: Define the network explicitly (good practice)
+networks:
   app-network:
     driver: bridge
