@@ -1,5 +1,6 @@
+// frontend/src/__tests__/Auth.test.js
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react'; // Removed 'act' as it's less needed without fake timers
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import Auth from '../components/Auth';
@@ -36,9 +37,16 @@ describe('Auth Component', () => {
       },
       writable: true,
     });
+
+    // Mock process.env.REACT_APP_BACKEND_URL for tests
+    // This is crucial because your component now relies on it
+    process.env.REACT_APP_BACKEND_URL = 'http://test-backend:5000'; // Or any dummy URL for tests
   });
 
-  // No afterEach for timers needed anymore
+  // afterEach to clean up mocked env var if other tests rely on a clean slate
+  afterEach(() => {
+    delete process.env.REACT_APP_BACKEND_URL;
+  });
 
   test('renders login form by default', () => {
     render(<Auth />);
@@ -69,21 +77,18 @@ describe('Auth Component', () => {
     await user.type(screen.getByLabelText(/password:/i), 'password123');
     await user.click(screen.getByRole('button', { name: /login/i }));
 
-    // Wait for the success message to appear and ensure the navigation happens
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', {
+      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
+      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
         username: 'testuser',
         password: 'password123',
       });
       expect(mockSetToken).toHaveBeenCalledWith('mock-token');
-      // Ensure the success message is in the document
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
-      // Now, assert that navigate was called.
-      // This is the last check, and waitFor will keep retrying until it's true or times out.
-      expect(mockNavigate).toHaveBeenCalledWith('/');
-    }, { timeout: 2000 }); // Increase waitFor timeout slightly if needed, default is 1000ms
+      // Ensure navigate is called with /dashboard, not /
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    }, { timeout: 2000 });
   });
-
 
   test('handles failed login', async () => {
     axios.post.mockRejectedValueOnce({
@@ -96,7 +101,8 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', {
+      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
+      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
         username: 'wronguser',
         password: 'wrongpass',
       });
@@ -121,7 +127,8 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', {
+      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
+      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
         username: 'newuser',
         password: 'newpassword',
         role: 'admin',
@@ -149,7 +156,8 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', {
+      // --- CORRECTED: Using backticks (`) for template literal in mock expectation ---
+      expect(axios.post).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
         username: 'existinguser',
         password: 'password',
         role: 'user',

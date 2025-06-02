@@ -1,8 +1,8 @@
 // frontend/src/components/Auth.js
-import React, { useState } from 'react'; // Ensure useState is imported
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Assuming this provides setToken
+import { useAuth } from '../context/AuthContext';
 
 const Auth = () => {
   const [username, setUsername] = useState('');
@@ -23,33 +23,28 @@ const Auth = () => {
     try {
       let response;
       if (isRegister) {
-        response = await axios.post('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', { username, password, role });
-        // For successful registration:
-        // 1. Set a success message for the user.
-        // 2. Do NOT set a token unless registration automatically logs them in (which your test implies it doesn't).
-        // 3. You might want to switch to the login form after successful registration.
-        setMessage('User registered successfully'); // Test expects this
-        setIsRegister(false); // Switch to login form
+        // --- CORRECTED: Using backticks (`) for template literal ---
+        response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, { username, password, role });
+        setMessage('User registered successfully');
+        setIsRegister(false); // Switch to login form after successful registration
         setUsername(''); // Clear form fields
         setPassword('');
         setRole('user'); // Reset role
       } else { // This is a login attempt
-        response = await axios.post('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', { username, password });
-        setToken(response.data.token); // ONLY set token on successful LOGIN
-        setMessage('Success! Redirecting...'); // Test expects this
-        setTimeout(() => { navigate('/'); }, 1000); // Navigate to dashboard after delay
+        // --- CORRECTED: Using backticks (`) for template literal ---
+        response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, { username, password });
+        setToken(response.data.token);
+        setMessage('Success! Redirecting...');
+        setTimeout(() => { navigate('/dashboard'); }, 1000); // Navigate to /dashboard as per App.js Routes
       }
-    } catch (err) { // Renamed error to err to avoid conflict with 'error' state
-      // Set an error message based on API response or a generic one
-      if (err.response && err.response.data && err.response.data.message) { // Backend often sends 'message'
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
-      } else if (err.response && err.response.data && err.response.data.msg) { // Fallback to 'msg'
+      } else if (err.response && err.response.data && err.response.data.msg) {
         setError(err.response.data.msg);
       } else {
         setError(`${isRegister ? 'Registration' : 'Authentication'} failed. Please try again.`);
       }
-      // IMPORTANT: Do NOT call setToken(null) here for failed attempts.
-      // The test expects mockSetToken NOT to be called AT ALL on failure.
     }
   };
 
@@ -60,7 +55,7 @@ const Auth = () => {
         <div style={{ marginBottom: '15px' }}>
           <label htmlFor="username">Username:</label>
           <input
-            id="username" // Ensure id is present for accessibility and testing
+            id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -71,7 +66,7 @@ const Auth = () => {
         <div style={{ marginBottom: '15px' }}>
           <label htmlFor="password">Password:</label>
           <input
-            id="password" // Ensure id is present
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -83,7 +78,7 @@ const Auth = () => {
           <div style={{ marginBottom: '15px' }}>
             <label htmlFor="role">Role:</label>
             <select
-              id="role" // Ensure id is present
+              id="role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               style={{ width: '100%', padding: '8px', marginTop: '5px' }}
@@ -93,7 +88,6 @@ const Auth = () => {
             </select>
           </div>
         )}
-        {/* Render success/error messages */}
         {message && <p style={{ color: 'green', textAlign: 'center' }}>{message}</p>}
         {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 

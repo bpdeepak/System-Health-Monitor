@@ -17,15 +17,14 @@ function ReportGenerator({ token, hostnames }) {
         endDate: endDate || undefined,    // Send only if selected
       };
 
-      const response = await axios.get('${process.env.REACT_APP_BACKEND_URL}/api/reports/generate', {
+      // --- CORRECTED: Using backticks (`) for template literal ---
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/reports/generate`, {
         headers: { 'x-auth-token': token },
         params: params,
         responseType: 'blob', // Important for downloading files
       });
 
-      // Create a Blob from the PDF data
       const file = new Blob([response.data], { type: 'application/pdf' });
-      // Create a link element
       const fileURL = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = fileURL;
@@ -39,6 +38,7 @@ function ReportGenerator({ token, hostnames }) {
 
     } catch (err) {
       console.error('Error generating report:', err);
+      // Check if error.response exists before accessing its properties
       setMessage(err.response?.data?.msg || 'Failed to generate report. No data or server error.');
     }
   };
