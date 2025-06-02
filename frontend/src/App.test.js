@@ -39,22 +39,24 @@ describe('App component', () => {
 
     // Mock axios responses for various endpoints
     axios.get.mockImplementation((url) => {
-      if (url.includes('/api/metrics')) {
+      // More precise URL matching to ensure the correct mock is hit
+      if (url === `${process.env.REACT_APP_BACKEND_URL}/api/metrics`) {
         return Promise.resolve({
           data: { metrics: [{ hostname: 'host1', cpu_usage: 10, memory_usage: 20, timestamp: new Date().toISOString() }], summary: {} },
         });
       }
-      if (url.includes('/api/hosts')) {
+      if (url === `${process.env.REACT_APP_BACKEND_URL}/api/hosts`) {
         return Promise.resolve({ data: ['host1', 'host2'] });
       }
-      if (url.includes('/api/admin-panel')) {
+      if (url === `${process.env.REACT_APP_BACKEND_URL}/api/admin-panel`) {
         return Promise.resolve({ data: { users: [] } }); // Empty array for admin panel users
       }
+      // Fallback for unmocked routes
       return Promise.reject(new Error(`Unhandled axios GET request for URL: ${url}`));
     });
 
     axios.post.mockImplementation((url, data) => {
-        if (url.includes('/api/reports/generate')) {
+        if (url === `${process.env.REACT_APP_BACKEND_URL}/api/reports/generate`) {
             return Promise.resolve({
                 data: new Blob(['mock PDF content'], { type: 'application/pdf' }),
                 headers: { 'content-type': 'application/pdf' }
@@ -85,14 +87,18 @@ describe('App component', () => {
     localStorage.setItem('token', 'fake-token');
     localStorage.setItem('role', 'user');
 
-    render(
-      <AuthProvider> {/* Wrap App with AuthProvider */}
-        <App />
-      </AuthProvider>
-    );
+    // Wrap render in act to ensure all async effects are processed
+    await act(async () => {
+      render(
+        <AuthProvider> {/* Wrap App with AuthProvider */}
+          <App />
+        </AuthProvider>
+      );
+    });
 
+    // Use findByRole and findByText as these elements appear after async operations
     expect(await screen.findByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
-    expect(screen.getByText(/Latest System Metrics Summary/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Latest System Metrics Summary/i)).toBeInTheDocument();
   });
 
   test('redirects to login on root path if not authenticated (alternative initial path)', async () => {
