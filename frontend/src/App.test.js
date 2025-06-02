@@ -31,6 +31,11 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('App component', () => {
+  // Set the environment variable for tests
+  beforeAll(() => {
+    process.env.REACT_APP_BACKEND_URL = 'http://localhost:5000'; // Define a dummy backend URL for testing
+  });
+
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
