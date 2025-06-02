@@ -13,6 +13,7 @@ jest.mock('react-router-dom', () => ({
 
 const mockSetToken = jest.fn();
 jest.mock('../context/AuthContext', () => ({
+  // Ensure useAuth provides setToken function
   useAuth: () => ({
     setToken: mockSetToken,
   }),
@@ -27,6 +28,7 @@ describe('Auth Component', () => {
     mockNavigate.mockClear();
     mockSetToken.mockClear();
 
+    // Mock localStorage
     Object.defineProperty(window, 'localStorage', {
       value: {
         setItem: jest.fn(),
@@ -66,15 +68,16 @@ describe('Auth Component', () => {
     await user.type(screen.getByLabelText(/password:/i), 'password123');
     await user.click(screen.getByRole('button', { name: /login/i }));
 
+    // This waitFor will now check for both the success message AND the navigation
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
         username: 'testuser',
         password: 'password123',
       });
-      // Moved mockNavigate assertion inside waitFor
       expect(mockSetToken).toHaveBeenCalledWith('mock-token');
-      expect(mockNavigate).toHaveBeenCalledWith('/');
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
+      // Crucially, expect navigate to be called here too
+      expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });
 
@@ -93,15 +96,12 @@ describe('Auth Component', () => {
         username: 'wronguser',
         password: 'wrongpass',
       });
+      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument(); // Ensure error message appears
     });
 
     expect(mockSetToken).not.toHaveBeenCalled();
     expect(localStorage.setItem).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
-    });
   });
 
   test('handles successful registration', async () => {
@@ -122,16 +122,13 @@ describe('Auth Component', () => {
         password: 'newpassword',
         role: 'admin',
       });
+      expect(screen.getByText(/User registered successfully/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument(); // Ensure it switches back to login form
     });
 
     expect(mockSetToken).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(localStorage.setItem).not.toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(screen.getByText(/User registered successfully/i)).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
-    });
   });
 
   test('handles failed registration', async () => {
@@ -151,16 +148,13 @@ describe('Auth Component', () => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/register', {
         username: 'existinguser',
         password: 'password',
-        role: 'user',
+        role: 'user', // Default role if not specified
       });
+      expect(screen.getByText(/Username already exists/i)).toBeInTheDocument();
     });
 
     expect(mockSetToken).not.toHaveBeenCalled();
     expect(localStorage.setItem).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Username already exists/i)).toBeInTheDocument();
-    });
   });
 });
