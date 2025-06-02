@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import '../App.css'; // Assuming common styles are here or separate auth.css
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
