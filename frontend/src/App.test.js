@@ -2,7 +2,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter as Router, MemoryRouter } from 'react-router-dom';
+// NO LONGER IMPORT BrowserRouter here, as App itself provides it
+// import { BrowserRouter as Router } from 'react-router-dom';
 
 // Import the actual AuthProvider to wrap App in tests
 import { AuthProvider } from '../context/AuthContext';
@@ -65,27 +66,23 @@ global.fetch = jest.fn((url) => {
 
 describe('App component', () => {
   beforeEach(() => {
-    // Clear localStorage before each test to ensure isolation
     localStorage.clear();
-    // Clear all fetch mocks before each test
     jest.clearAllMocks();
+    // Reset path before each test to ensure tests are isolated
+    window.history.pushState({}, 'Test page', '/');
   });
 
   afterEach(() => {
-    // Clean up after each test
     localStorage.clear();
   });
 
   test('renders login page if not authenticated (default route)', async () => {
-    // Ensure localStorage is empty to simulate unauthenticated state
     localStorage.clear();
 
     render(
-      <Router>
-        <AuthProvider> {/* <--- CRUCIAL: Wrap App with AuthProvider */}
-          <App />
-        </AuthProvider>
-      </Router>
+      <AuthProvider> {/* Wrap App with AuthProvider */}
+        <App />
+      </AuthProvider>
     );
 
     expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
@@ -97,11 +94,9 @@ describe('App component', () => {
     localStorage.setItem('role', 'user');
 
     render(
-      <Router>
-        <AuthProvider> {/* <--- CRUCIAL: Wrap App with AuthProvider */}
-          <App />
-        </AuthProvider>
-      </Router>
+      <AuthProvider> {/* Wrap App with AuthProvider */}
+        <App />
+      </AuthProvider>
     );
 
     expect(await screen.findByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
@@ -112,11 +107,9 @@ describe('App component', () => {
     localStorage.clear();
 
     render(
-      <Router>
-        <AuthProvider> {/* <--- CRUCIAL: Wrap App with AuthProvider */}
-          <App />
-        </AuthProvider>
-      </Router>
+      <AuthProvider> {/* Wrap App with AuthProvider */}
+        <App />
+      </AuthProvider>
     );
 
     expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
@@ -126,17 +119,16 @@ describe('App component', () => {
     localStorage.setItem('token', 'admin-token');
     localStorage.setItem('role', 'admin');
 
-    // For testing specific routes directly, MemoryRouter is better
-    const { rerender } = render(
-        <Router>
-            <AuthProvider>
-                <App />
-            </AuthProvider>
-        </Router>
-    );
+    // For testing specific routes directly when App uses BrowserRouter internally,
+    // you can mock window.location or use MemoryRouter if your App component
+    // is structured to accept a router prop or similar.
+    // Given App uses BrowserRouter, we'll simulate the navigation and then check.
+    // Or, for direct route testing, we can use MemoryRouter from react-router-dom/server
+    // to set initial entries. Let's use the actual MemoryRouter import for clarity.
 
-    // To test the /admin path directly in App.test.js, it's best to use MemoryRouter
-    // which allows setting an initial URL.
+    // Using MemoryRouter for direct path testing in App.test.js
+    const { MemoryRouter } = jest.requireActual('react-router-dom');
+
     render(
       <MemoryRouter initialEntries={['/admin']}>
         <AuthProvider>
