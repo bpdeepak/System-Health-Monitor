@@ -10,6 +10,9 @@ pipeline {
         MONGO_URI='mongodb://localhost:27017/monitoring_test'
         JWT_SECRET='6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a'
         MONGO_TEST_URI='mongodb://localhost:27017/monitoring_test'
+        // --- ADD THIS LINE BELOW ---
+        DOCKER_HOST = 'unix:///home/deepak/.docker/desktop/docker.sock' // <--- ADD THIS LINE
+        // --- ADD THIS LINE ABOVE ---
     }
 
     stages {
@@ -48,7 +51,7 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                // These commands will use the Docker Desktop installation on your system
+                // These commands will now correctly use the Docker Desktop installation on your system
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} ./frontend"
                 sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
