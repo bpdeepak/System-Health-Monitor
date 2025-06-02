@@ -4,10 +4,15 @@
 OUTPUT="codebase_dump.md"
 > "$OUTPUT"  # Clear the file if it exists
 
-# Ignore patterns (edit this as needed)
+# Add directory tree to output
+echo "## Project Directory Structure" >> "$OUTPUT"
+tree -F --dirsfirst -I node_modules >> "$OUTPUT"
+echo -e "\n\n" >> "$OUTPUT"
+
+# Ignore patterns
 IGNORE_DIRS="node_modules|.git|dist|build|package-lock.json"
 
-# File extensions to include (you can add more)
+# File extensions to include
 EXTENSIONS="js|py|css|html|json|sh|Dockerfile|md"
 
 # Find and process files
