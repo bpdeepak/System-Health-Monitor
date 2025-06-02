@@ -1,8 +1,25 @@
-// frontend/src/components/Dashboard.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
+
+// --- Define a consistent color palette for charts ---
+const CHART_LINE_COLORS = [
+  '#3498db', // Accent blue
+  '#2ecc71', // Success green
+  '#e74c3c', // Danger red
+  '#f39c12', // Warning orange
+  '#9b59b6', // Amethyst purple
+  '#1abc9c', // Turquoise
+  '#f1c40f', // Sunflower yellow
+  '#34495e', // Primary dark blue-grey
+  '#7f8c8d', // Wet asphalt grey
+  '#d35400'  // Pumpkin orange
+];
+
+// Helper function to get a color from the palette
+const getChartColor = (index) => CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
+// --- END NEW ---
 
 function Dashboard() {
   const { isAuthenticated, logout } = useAuth();
@@ -39,7 +56,7 @@ function Dashboard() {
     if (timeRange === 'custom' && customStartDate && customEndDate) {
       params.append('startDate', customStartDate);
       params.append('endDate', customEndDate);
-    } else {
+    } else if (timeRange !== 'custom') { // Only append timeRange if not custom
       params.append('timeRange', timeRange);
     }
 
@@ -68,7 +85,6 @@ function Dashboard() {
       setLoading(false);
     }
   }, [logout, navigate, selectedHostname, timeRange, customStartDate, customEndDate]);
-
 
   const fetchLatestMetrics = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -99,7 +115,8 @@ function Dashboard() {
       });
       const data = await response.json();
       if (response.ok) {
-        setAvailableHostnames(data);
+        // Ensure 'all' option is always present and at the beginning
+        setAvailableHostnames(['all', ...data.filter(host => host !== 'all')]);
       } else {
         console.error('Failed to fetch hostnames:', data.message);
       }
@@ -124,37 +141,37 @@ function Dashboard() {
 
   // Data preparation for charts
   const chartData = useMemo(() => {
-    const grouped = metrics.reduce((acc, metric) => {
-      const hostname = metric.hostname || 'unknown';
-      if (!acc[hostname]) {
-        acc[hostname] = [];
-      }
-      acc[hostname].push({
+    // If 'all' is selected, we need to process data for all hosts.
+    // Recharts expects an array of objects for the `data` prop.
+    // When displaying multiple lines, each line's data should be part of these objects.
+    // For "all hosts", we'll return a flat array where each object contains
+    // the metric for a specific timestamp and hostname, allowing Recharts
+    // to draw separate lines based on the `dataKey` and `name` in Area/Line.
+    if (selectedHostname === 'all') {
+      const allMetricsProcessed = metrics.map(metric => ({
         ...metric,
         timestamp: new Date(metric.timestamp).toLocaleString(),
         cpuUsage: metric.cpu,
         memoryUsage: metric.memory,
         diskUsage: metric.disk
-      });
-      return acc;
-    }, {});
-
-    Object.keys(grouped).forEach(hostname => {
-      grouped[hostname].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    });
-
-    if (selectedHostname === 'all' && Object.keys(grouped).length > 0) {
-      return metrics.map(metric => ({
-        ...metric,
-        timestamp: new Date(metric.timestamp).toLocaleString(),
-        cpuUsage: metric.cpu,
-        memoryUsage: metric.memory,
-        diskUsage: metric.disk
-      })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }));
+      // Sort by timestamp to ensure proper chart rendering
+      return allMetricsProcessed.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } else {
+      // If a specific hostname is selected, filter and format
+      return metrics
+        .filter(metric => metric.hostname === selectedHostname)
+        .map(metric => ({
+          ...metric,
+          timestamp: new Date(metric.timestamp).toLocaleString(),
+          cpuUsage: metric.cpu,
+          memoryUsage: metric.memory,
+          diskUsage: metric.disk
+        }))
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     }
-
-    return grouped[selectedHostname] || [];
   }, [metrics, selectedHostname]);
+
 
   const latestMetricsDisplay = useMemo(() => {
     if (!Array.isArray(latestMetrics)) {
@@ -188,10 +205,12 @@ function Dashboard() {
 
 
   if (loading && metrics.length === 0) {
+    // Apply styling to loading container
     return <div className="loading-container">Loading dashboard data...</div>;
   }
 
   if (error) {
+    // Apply styling to error container
     return <div className="error-container">Error: {error}</div>;
   }
 
@@ -199,59 +218,68 @@ function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>System Monitoring Dashboard</h2>
-        <div className="filters">
-          <label htmlFor="hostname-select">Hostname:</label>
-          <select
-            id="hostname-select"
-            value={selectedHostname}
-            onChange={(e) => setSelectedHostname(e.target.value)}
-          >
-            {availableHostnames.map((host) => (
-              <option key={host} value={host}>
-                {host === 'all' ? 'All Hosts' : host}
-              </option>
-            ))}
-          </select>
+        {/* --- NEW: Add 'card' class to filters div for consistent styling --- */}
+        <div className="filters card">
+          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
+            <label htmlFor="hostname-select">Hostname:</label>
+            <select
+              id="hostname-select"
+              value={selectedHostname}
+              onChange={(e) => setSelectedHostname(e.target.value)}
+            >
+              {availableHostnames.map((host) => (
+                <option key={host} value={host}>
+                  {host === 'all' ? 'All Hosts' : host}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <label htmlFor="time-range-select">Time Range:</label>
-          <select
-            id="time-range-select"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-          >
-            <option value="1h">Last Hour</option>
-            <option value="24h">Last 24 Hours</option>
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-            <option value="custom">Custom Range</option>
-          </select>
+          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
+            <label htmlFor="time-range-select">Time Range:</label>
+            <select
+              id="time-range-select"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+            >
+              <option value="1h">Last Hour</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
 
           {timeRange === 'custom' && (
             <>
-              <label htmlFor="start-date">Start Date:</label>
-              <input
-                type="datetime-local"
-                id="start-date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-              />
-              <label htmlFor="end-date">End Date:</label>
-              <input
-                type="datetime-local"
-                id="end-date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-              />
+              <div className="filter-group">
+                <label htmlFor="start-date">Start Date:</label>
+                <input
+                  type="datetime-local"
+                  id="start-date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+              </div>
+              <div className="filter-group">
+                <label htmlFor="end-date">End Date:</label>
+                <input
+                  type="datetime-local"
+                  id="end-date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
             </>
           )}
           <button onClick={fetchMetrics} className="btn-primary">Apply Filters</button>
         </div>
       </div>
 
-      <div className="latest-metrics-summary card">
+      <div className="latest-metrics-summary card"> {/* Already has 'card' */}
         <h3>Latest System Metrics Summary</h3>
         {latestMetricsDisplay.length > 0 ? (
-          <table>
+          <table className="latest-metrics-table"> {/* NEW: Add class for table styling */}
             <thead>
               <tr>
                 <th>Hostname</th>
@@ -266,9 +294,10 @@ function Dashboard() {
               {latestMetricsDisplay.map((metric, index) => (
                 <tr key={index}>
                   <td>{metric.hostname}</td>
-                  <td className={metric.cpuUsage > 80 ? 'critical' : ''}>{metric.cpuUsage.toFixed(2)}</td>
-                  <td className={metric.memoryUsage > 80 ? 'critical' : ''}>{metric.memoryUsage.toFixed(2)}</td>
-                  <td className={metric.diskUsage > 80 ? 'critical' : ''}>{metric.diskUsage.toFixed(2)}</td>
+                  {/* Apply .metric-value and status classes based on thresholds */}
+                  <td className={`metric-value ${metric.cpuUsage > 80 ? 'critical' : metric.cpuUsage > 60 ? 'warning' : 'normal'}`}>{metric.cpuUsage.toFixed(2)}</td>
+                  <td className={`metric-value ${metric.memoryUsage > 80 ? 'critical' : metric.memoryUsage > 60 ? 'warning' : 'normal'}`}>{metric.memoryUsage.toFixed(2)}</td>
+                  <td className={`metric-value ${metric.diskUsage > 80 ? 'critical' : metric.diskUsage > 60 ? 'warning' : 'normal'}`}>{metric.diskUsage.toFixed(2)}</td>
                   <td>{metric.uptime}</td>
                   <td>{metric.os}</td>
                 </tr>
@@ -280,48 +309,48 @@ function Dashboard() {
         )}
       </div>
 
-      <div className="charts-container">
-        <div className="chart-card card">
+      <div className="charts-container"> {/* NEW: Consider grid layout for charts if needed */}
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>CPU Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
+                // When 'all' is selected, render an Area for each unique hostname.
+                // The dataKey should remain 'cpuUsage' as it's consistent across all objects in chartData.
+                // The 'name' prop of Area will be used in the legend.
                 [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
                   <Area
                     key={`cpu-${hostname}`}
                     type="monotone"
                     dataKey="cpuUsage"
                     name={`${hostname} CPU`}
-                    stroke={`hsl(${index * 137}, 70%, 50%)`}
-                    fill={`hsl(${index * 137}, 70%, 50%)`}
+                    stroke={getChartColor(index)} // Use new color palette
+                    fill={getChartColor(index)}    // Use new color palette
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      cpuUsage: m.cpu,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
+                    // No need to pass data prop here when chartData already contains all data
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="cpuUsage" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} dot={false} />
+                // When a specific hostname is selected, render a single Area.
+                <Area type="monotone" dataKey="cpuUsage" stroke={CHART_LINE_COLORS[0]} fill={CHART_LINE_COLORS[0]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card">
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>Memory Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
@@ -331,31 +360,26 @@ function Dashboard() {
                     type="monotone"
                     dataKey="memoryUsage"
                     name={`${hostname} Memory`}
-                    stroke={`hsl(${index * 137 + 50}, 70%, 50%)`}
-                    fill={`hsl(${index * 137 + 50}, 70%, 50%)`}
+                    stroke={getChartColor(index + 1)} // Use new color palette (offset by 1 to get a different color)
+                    fill={getChartColor(index + 1)}
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      memoryUsage: m.memory,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="memoryUsage" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} dot={false} />
+                <Area type="monotone" dataKey="memoryUsage" stroke={CHART_LINE_COLORS[1]} fill={CHART_LINE_COLORS[1]} fillOpacity={0.3} dot={false} /> 
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card">
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>Disk Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
@@ -365,19 +389,14 @@ function Dashboard() {
                     type="monotone"
                     dataKey="diskUsage"
                     name={`${hostname} Disk`}
-                    stroke={`hsl(${index * 137 + 100}, 70%, 50%)`}
-                    fill={`hsl(${index * 137 + 100}, 70%, 50%)`}
+                    stroke={getChartColor(index + 2)} // Use new color palette (offset by 2)
+                    fill={getChartColor(index + 2)}
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      diskUsage: m.disk,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="diskUsage" stroke="#ffc658" fill="#ffc658" fillOpacity={0.3} dot={false} />
+                <Area type="monotone" dataKey="diskUsage" stroke={CHART_LINE_COLORS[3]} fill={CHART_LINE_COLORS[3]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>

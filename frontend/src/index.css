@@ -7,14 +7,37 @@
   padding: 0;
 }
 
+/* --- NEW: Define Color Variables --- */
+:root {
+  --primary-blue: #34495e; /* Dark Blue-Grey for header, main accents */
+  --accent-light-blue: #3498db; /* Bright Blue for buttons, links, highlights */
+  --accent-dark-blue: #2980b9; /* Darker Blue for hover states */
+  --background-light: #f8f9fa; /* Very light grey for main background */
+  --card-background: #ffffff; /* White for cards */
+  --text-dark: #333333; /* Dark text */
+  --text-medium: #666666; /* Medium grey text */
+  --text-light: #aaaaaa; /* Light grey text */
+  --border-light: #e0e0e0; /* Light border color */
+  --shadow-light: rgba(0, 0, 0, 0.08); /* Light shadow */
+
+  --success-green: #2ecc71; /* Green for success/healthy */
+  --success-green-dark: #27ae60;
+  --warning-orange: #f39c12; /* Orange for warning/moderate */
+  --warning-orange-dark: #e67e22;
+  --danger-red: #e74c3c; /* Red for danger/critical */
+  --danger-red-dark: #c0392b;
+}
+/* --- END NEW --- */
+
+
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f2f5; /* Light grey background */
+  background-color: var(--background-light); /* Use variable */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
-  color: #333; /* Darker text color for readability */
+  color: var(--text-dark); /* Use variable */
   line-height: 1.6;
 }
 
