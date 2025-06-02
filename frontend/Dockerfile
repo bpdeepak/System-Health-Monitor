@@ -25,17 +25,16 @@ RUN npm run build
 # --- Stage 2: Serve the built application with Nginx ---
 FROM nginx:alpine
 
+# Remove default Nginx config to replace it cleanly
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy your custom Nginx configuration to the container
+# This path (nginx/nginx.conf) is relative to the Docker build context (your 'frontend' folder)
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
 # Copy the built React app from the builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Optional: Copy a custom Nginx configuration if you have one.
-# For a basic React app, the default Nginx config often works fine.
-# If your app requires specific routing or rewrites (e.g., for React Router HTML5 mode),
-# you might need a custom /etc/nginx/conf.d/default.conf
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80 where Nginx will serve the React app
 EXPOSE 80
 
-# Command to run Nginx in the foreground
 CMD ["nginx", "-g", "daemon off;"]
