@@ -1,3 +1,5 @@
+// Jenkinsfile-CI (or just Jenkinsfile)
+
 pipeline {
     agent any
 
@@ -6,9 +8,9 @@ pipeline {
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         GITHUB_CRED_ID = 'github-creds'
         DOCKERHUB_CRED_ID = 'dockerhub-creds'
-        MONGO_URI = 'mongodb://localhost:27017/monitoring_test'
+        MONGO_URI = 'mongodb://localhost:27017/monitoring_test' // This is for local Jenkins tests, not for deployed mongo
         JWT_SECRET = '6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a'
-        MONGO_TEST_URI = 'mongodb://localhost:27017/monitoring_test'
+        MONGO_TEST_URI = 'mongodb://localhost:27017/monitoring_test' // Same as above
 
         DEPLOY_SERVER_USER = 'ubuntu'  // Default user for Ubuntu EC2
         DEPLOY_SERVER_IP = '13.48.48.96' // EC2 Public IPv4 address
@@ -22,7 +24,7 @@ pipeline {
                 dir('backend') {
                     sh 'npm install --silent'
                     sh 'echo "MONGO_TEST_URI in Jenkins pipeline: $MONGO_TEST_URI"'
-                    sh 'rm -f .env'
+                    sh 'rm -f .env' // Ensure no old .env interferes with tests
                     sh 'npm test -- --silent'
                 }
             }
@@ -31,9 +33,12 @@ pipeline {
         stage('Frontend Build & Test') {
             steps {
                 dir('frontend') {
-                    sh 'rm -rf node_modules'
-                    sh 'rm -f package-lock.json'
+                    sh 'rm -rf node_modules' // Clean slate for npm install
+                    sh 'rm -f package-lock.json' // Remove lock file to ensure fresh install
                     sh 'npm install --silent'
+                    // For npm test, it usually runs in development mode.
+                    // If your tests make actual API calls, they might need env vars too.
+                    // For now, let's assume they are mocked or don't hit real APIs.
                     sh 'npm test -- --ci --watchAll=false --silent'
                 }
             }
@@ -41,9 +46,13 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
-                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} ./frontend"
-                sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
+                script {
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
+                    // --- IMPORTANT CHANGE FOR FRONTEND BUILD ---
+                    // Pass the backend URL for the browser to use
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} --build-arg REACT_APP_BACKEND_URL=http://${env.DEPLOY_SERVER_IP}:5000 ./frontend"
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
+                }
             }
         }
 
@@ -91,6 +100,8 @@ pipeline {
                         docker compose down --remove-orphans
 
                         echo "Starting new containers with Docker Compose..."
+                        # Ensure your docker-compose.yml correctly uses http://backend:5000 for inter-container communication
+                        # The REACT_APP_BACKEND_URL passed during build is for the browser.
                         echo "IMAGE_TAG=${env.IMAGE_TAG}" > .env
                         echo "HOSTNAME_FOR_AGENT_TAG=${env.HOSTNAME_FOR_AGENT_TAG}" >> .env
                         docker compose up -d

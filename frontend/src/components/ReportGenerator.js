@@ -17,7 +17,7 @@ function ReportGenerator({ token, hostnames }) {
         endDate: endDate || undefined,    // Send only if selected
       };
 
-      const response = await axios.get('http://localhost:5000/api/reports/generate', {
+      const response = await axios.get('${process.env.REACT_APP_BACKEND_URL}/api/reports/generate', {
         headers: { 'x-auth-token': token },
         params: params,
         responseType: 'blob', // Important for downloading files

@@ -71,7 +71,7 @@ describe('Auth Component', () => {
 
     // Wait for the success message to appear and ensure the navigation happens
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
+      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', {
         username: 'testuser',
         password: 'password123',
       });
@@ -96,7 +96,7 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
+      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', {
         username: 'wronguser',
         password: 'wrongpass',
       });
@@ -121,7 +121,7 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/register', {
+      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', {
         username: 'newuser',
         password: 'newpassword',
         role: 'admin',
@@ -149,7 +149,7 @@ describe('Auth Component', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/register', {
+      expect(axios.post).toHaveBeenCalledWith('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', {
         username: 'existinguser',
         password: 'password',
         role: 'user',

@@ -23,7 +23,7 @@ const Auth = () => {
     try {
       let response;
       if (isRegister) {
-        response = await axios.post('http://localhost:5000/api/auth/register', { username, password, role });
+        response = await axios.post('${process.env.REACT_APP_BACKEND_URL}/api/auth/register', { username, password, role });
         // For successful registration:
         // 1. Set a success message for the user.
         // 2. Do NOT set a token unless registration automatically logs them in (which your test implies it doesn't).
@@ -34,7 +34,7 @@ const Auth = () => {
         setPassword('');
         setRole('user'); // Reset role
       } else { // This is a login attempt
-        response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+        response = await axios.post('${process.env.REACT_APP_BACKEND_URL}/api/auth/login', { username, password });
         setToken(response.data.token); // ONLY set token on successful LOGIN
         setMessage('Success! Redirecting...'); // Test expects this
         setTimeout(() => { navigate('/'); }, 1000); // Navigate to dashboard after delay
