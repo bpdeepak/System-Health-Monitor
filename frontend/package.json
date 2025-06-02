@@ -8,7 +8,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "axios": "0.27.2",
+    "axios": "^1.9.0",
     "chart.js": "^4.4.9",
     "chartjs-adapter-date-fns": "^3.0.0",
     "react": "^19.1.0",
@@ -25,6 +25,18 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.js"
+    ],
+    "transform": {
+      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(axios|chartjs-adapter-date-fns)/)"
+    ]
   },
   "eslintConfig": {
     "extends": [
