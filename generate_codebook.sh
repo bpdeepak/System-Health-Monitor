@@ -5,7 +5,7 @@ OUTPUT="codebase_dump.md"
 > "$OUTPUT"  # Clear the file if it exists
 
 # Ignore patterns (edit this as needed)
-IGNORE_DIRS="node_modules|.git|dist|build"
+IGNORE_DIRS="node_modules|.git|dist|build|package-lock.json"
 
 # File extensions to include (you can add more)
 EXTENSIONS="js|py|css|html|json|sh|Dockerfile|md"
