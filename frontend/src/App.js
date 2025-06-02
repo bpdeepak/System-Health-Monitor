@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
 import './App.css';
 
-// Mock Auth Context - Replace with actual context/state management for real app
+// Auth Context - This is defined directly in App.js for this project structure
 const AuthContext = React.createContext(null);
 
 function useAuth() {
@@ -28,7 +28,7 @@ function useAuth() {
   return { isAuthenticated, userRole, login, logout };
 }
 
-// Private Route Component (similar to your authorize middleware)
+// Private Route Component
 const PrivateRoute = ({ children, roles }) => {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ function LoginPage() {
       });
       const data = await response.json();
       if (response.ok) {
-        auth.login(data.token, data.user ? data.user.role : 'user'); // Assuming role comes with user
+        auth.login(data.token, data.user ? data.user.role : 'user');
         navigate('/dashboard');
       } else {
         setError(data.msg || 'Login failed');
@@ -296,7 +296,6 @@ function Dashboard() {
 
   // Data preparation for charts
   const chartData = useMemo(() => {
-    // Group metrics by hostname and sort by timestamp
     const grouped = metrics.reduce((acc, metric) => {
       const hostname = metric.hostname || 'unknown';
       if (!acc[hostname]) {
@@ -304,25 +303,19 @@ function Dashboard() {
       }
       acc[hostname].push({
         ...metric,
-        timestamp: new Date(metric.timestamp).toLocaleString(), // Format for display
-        cpuUsage: metric.cpu,    // Standardize key names for Recharts
+        timestamp: new Date(metric.timestamp).toLocaleString(),
+        cpuUsage: metric.cpu,
         memoryUsage: metric.memory,
         diskUsage: metric.disk
       });
       return acc;
     }, {});
 
-    // Sort each host's metrics by timestamp
     Object.keys(grouped).forEach(hostname => {
       grouped[hostname].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     });
 
-    // If 'all' hostnames are selected, flatten the data for a single chart
-    // Otherwise, return grouped data for individual host charts (or handle differently)
     if (selectedHostname === 'all' && Object.keys(grouped).length > 0) {
-      // For 'all', we might want to show averages or combined data,
-      // but for simplicity, let's just return the full, unsorted list of metrics.
-      // This will plot all data points together.
       return metrics.map(metric => ({
         ...metric,
         timestamp: new Date(metric.timestamp).toLocaleString(),
@@ -335,23 +328,18 @@ function Dashboard() {
     return grouped[selectedHostname] || [];
   }, [metrics, selectedHostname]);
 
-  // This part calculates average CPU, memory, disk for each hostname
   const latestMetricsDisplay = useMemo(() => {
-    // Ensure latestMetrics is an array before mapping
     if (!Array.isArray(latestMetrics)) {
       console.warn('latestMetrics is not an array:', latestMetrics);
-      return []; // Return empty array to prevent errors
+      return [];
     }
 
     return latestMetrics.map(metric => {
-      // Check if the individual 'metric' object is defined and not null
       if (!metric) {
         console.warn('Found an undefined or null metric in latestMetrics array. Skipping.');
-        return null; // Return null for invalid entries
+        return null;
       }
 
-      // Use nullish coalescing (??) to provide a default value (0 or 'N/A')
-      // if the property is null or undefined.
       const cpuUsage = metric.cpu ?? 0;
       const memoryUsage = metric.memory ?? 0;
       const diskUsage = metric.disk ?? 0;
@@ -367,7 +355,7 @@ function Dashboard() {
         uptime: uptime,
         os: os
       };
-    }).filter(Boolean); // Filter out any null entries that resulted from undefined/null metrics
+    }).filter(Boolean);
   }, [latestMetrics]);
 
 
@@ -475,19 +463,16 @@ function Dashboard() {
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
-                // When 'all' is selected, plot lines for each unique hostname dynamically
-                // This requires iterating over all unique hostnames present in chartData
                 [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
                   <Area
                     key={`cpu-${hostname}`}
                     type="monotone"
                     dataKey="cpuUsage"
                     name={`${hostname} CPU`}
-                    stroke={`hsl(${index * 137}, 70%, 50%)`} // Dynamic color
+                    stroke={`hsl(${index * 137}, 70%, 50%)`}
                     fill={`hsl(${index * 137}, 70%, 50%)`}
                     fillOpacity={0.3}
                     dot={false}
-                    // Filter data for this specific hostname
                     data={metrics.filter(m => m.hostname === hostname).map(m => ({
                       ...m,
                       timestamp: new Date(m.timestamp).toLocaleString(),
@@ -496,7 +481,6 @@ function Dashboard() {
                   />
                 ))
               ) : (
-                // When a specific hostname is selected, plot a single line
                 <Area type="monotone" dataKey="cpuUsage" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
@@ -642,7 +626,7 @@ function Reports() {
       const response = await fetch(url, {
         headers: {
           'x-auth-token': token,
-          'Accept': 'application/pdf' // Request PDF
+          'Accept': 'application/pdf'
         },
       });
 
@@ -780,10 +764,8 @@ function AdminPanel() {
       });
       const data = await response.json();
       if (response.ok) {
-        // Assuming your /api/admin-panel returns user list, otherwise adjust
-        // For now, let's just log and show a dummy message if not implemented
         setMessage(data.msg || 'Admin data fetched (users list not implemented yet)');
-        setUsers([]); // Clear any previous dummy data
+        setUsers([]);
       } else {
         setMessage(data.msg || 'Failed to fetch admin data.');
         if (response.status === 401 || response.status === 403) {
@@ -807,7 +789,6 @@ function AdminPanel() {
     <div className="admin-panel-container">
       <h2>Admin Panel</h2>
       {message && <p>{message}</p>}
-      {/* Admin functionalities like user management can go here */}
       {users.length > 0 ? (
         <ul>
           {users.map(user => (
@@ -823,26 +804,25 @@ function AdminPanel() {
 
 // Main App Component
 function App() {
-  const auth = useAuth();
+  const auth = useAuth(); // This useAuth is the one defined *within this same App.js file*
 
   return (
-    <AuthContext.Provider value={auth}>
-      <Router>
-        <Navbar />
-        <div className="container">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-            <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminPanel /></PrivateRoute>} />
-            <Route path="/" element={auth.isAuthenticated ? <Dashboard /> : <LoginPage />} />
-            {/* Redirect any other path to dashboard if authenticated, or login if not */}
-            <Route path="*" element={auth.isAuthenticated ? <Dashboard /> : <LoginPage />} />
-          </Routes>
-        </div>
-      </Router>
-    </AuthContext.Provider>
+    // Removed AuthContext.Provider from here
+    <Router>
+      <Navbar />
+      <div className="container">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+          <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminPanel /></PrivateRoute>} />
+          <Route path="/" element={auth.isAuthenticated ? <Dashboard /> : <LoginPage />} />
+          {/* Redirect any other path to dashboard if authenticated, or login if not */}
+          <Route path="*" element={auth.isAuthenticated ? <Dashboard /> : <LoginPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
