@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react'; // Import 'act'
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import Auth from '../components/Auth';
@@ -13,7 +13,6 @@ jest.mock('react-router-dom', () => ({
 
 const mockSetToken = jest.fn();
 jest.mock('../context/AuthContext', () => ({
-  // Ensure useAuth provides setToken function
   useAuth: () => ({
     setToken: mockSetToken,
   }),
@@ -37,6 +36,15 @@ describe('Auth Component', () => {
       },
       writable: true,
     });
+
+    // Enable Jest's fake timers
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    // Restore real timers after each test
+    jest.runOnlyPendingTimers(); // Run any remaining timers to avoid leaks
+    jest.useRealTimers();
   });
 
   test('renders login form by default', () => {
@@ -68,7 +76,7 @@ describe('Auth Component', () => {
     await user.type(screen.getByLabelText(/password:/i), 'password123');
     await user.click(screen.getByRole('button', { name: /login/i }));
 
-    // This waitFor will now check for both the success message AND the navigation
+    // Wait for the success message to appear and ensure the navigation happens
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/login', {
         username: 'testuser',
@@ -76,10 +84,18 @@ describe('Auth Component', () => {
       });
       expect(mockSetToken).toHaveBeenCalledWith('mock-token');
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
-      // Crucially, expect navigate to be called here too
-      expect(mockNavigate).toHaveBeenCalledWith('/');
     });
+
+    // Now, advance timers if there's a setTimeout for navigation
+    // Use act to ensure React updates are processed after advancing timers
+    await act(async () => {
+      jest.runAllTimers(); // This will run any setTimeout that was initiated
+    });
+
+    // After advancing timers, check if navigation happened
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
+
 
   test('handles failed login', async () => {
     axios.post.mockRejectedValueOnce({
@@ -96,7 +112,7 @@ describe('Auth Component', () => {
         username: 'wronguser',
         password: 'wrongpass',
       });
-      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument(); // Ensure error message appears
+      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
     });
 
     expect(mockSetToken).not.toHaveBeenCalled();
@@ -123,7 +139,7 @@ describe('Auth Component', () => {
         role: 'admin',
       });
       expect(screen.getByText(/User registered successfully/i)).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument(); // Ensure it switches back to login form
+      expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
     });
 
     expect(mockSetToken).not.toHaveBeenCalled();
@@ -148,7 +164,7 @@ describe('Auth Component', () => {
       expect(axios.post).toHaveBeenCalledWith('http://localhost:5000/api/auth/register', {
         username: 'existinguser',
         password: 'password',
-        role: 'user', // Default role if not specified
+        role: 'user',
       });
       expect(screen.getByText(/Username already exists/i)).toBeInTheDocument();
     });
