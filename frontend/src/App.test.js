@@ -1,17 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
-import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter
+import { BrowserRouter } from 'react-router-dom';
 
-test('renders learn react link', () => {
+test('renders the login form by default', () => { // Changed test description
   render(
-    // Wrap your App component with BrowserRouter and AuthProvider
     <BrowserRouter>
       <AuthProvider>
         <App />
       </AuthProvider>
     </BrowserRouter>
   );
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  // Changed assertion to look for content from the Auth component
+  const loginHeading = screen.getByRole('heading', { name: /login/i });
+  expect(loginHeading).toBeInTheDocument();
 });

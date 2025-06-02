@@ -27,7 +27,6 @@ describe('Auth Component', () => {
     mockNavigate.mockClear();
     mockSetToken.mockClear();
 
-    // Mock localStorage for each test to track interactions
     Object.defineProperty(window, 'localStorage', {
       value: {
         setItem: jest.fn(),
@@ -72,13 +71,9 @@ describe('Auth Component', () => {
         username: 'testuser',
         password: 'password123',
       });
-    });
-
-    // Verify setToken was called. Removing localStorage.setItem assertion.
-    expect(mockSetToken).toHaveBeenCalledWith('mock-token');
-    expect(mockNavigate).toHaveBeenCalledWith('/');
-
-    await waitFor(() => {
+      // Moved mockNavigate assertion inside waitFor
+      expect(mockSetToken).toHaveBeenCalledWith('mock-token');
+      expect(mockNavigate).toHaveBeenCalledWith('/');
       expect(screen.getByText(/Success! Redirecting.../i)).toBeInTheDocument();
     });
   });
@@ -105,7 +100,6 @@ describe('Auth Component', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
 
     await waitFor(() => {
-      // Adjusted matcher to match the actual rendered text "Invalid credentials"
       expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
     });
   });
@@ -166,7 +160,6 @@ describe('Auth Component', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
 
     await waitFor(() => {
-      // Adjusted matcher to match the actual rendered text "Username already exists"
       expect(screen.getByText(/Username already exists/i)).toBeInTheDocument();
     });
   });
