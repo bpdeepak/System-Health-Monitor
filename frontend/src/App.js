@@ -22,6 +22,9 @@ import 'chartjs-adapter-date-fns'; // Adapter for date-fns to work with Chart.js
 // Import your authentication and report generator components
 import Auth from './components/Auth';
 import ReportGenerator from './components/ReportGenerator';
+// --- NEW IMPORTS FOR REACT ROUTER ---
+import { Routes, Route, Navigate } from 'react-router-dom';
+// --- END NEW IMPORTS ---
 
 // Register Chart.js components
 ChartJS.register(
@@ -129,6 +132,8 @@ function App() {
     localStorage.setItem('token', newToken);
     setToken(newToken);
     setUserRole(decodeJwt(newToken));
+    // After successful login/registration, navigate to dashboard
+    // (Auth component should also call navigate internally)
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -142,6 +147,8 @@ function App() {
     setLatestError(null);
     setHistoricalError(null);
     setSelectedHostname('');
+    // After logout, navigate back to login
+    // window.location.href = '/login'; // Or use navigate('/login') if this component has access to it
   }, []);
 
   // --- Data Fetching Logic ---
@@ -157,7 +164,9 @@ function App() {
       setLatestLoading(true);
       setLatestError(null);
       try {
-        const response = await axios.get("http://localhost:5000/api/metrics/latest", {
+        // --- IMPORTANT: Ensure this URL matches your backend service name in docker-compose.yml ---
+        // If your backend is accessed via a specific port and domain, adjust accordingly
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/metrics/latest`, {
           headers: { 'x-auth-token': token }
         });
         setLatestMetrics(response.data);
@@ -196,7 +205,8 @@ function App() {
                 startDate: historicalStartDate ? historicalStartDate.toISOString() : undefined,
                 endDate: historicalEndDate ? historicalEndDate.toISOString() : undefined,
             };
-            const response = await axios.get('http://localhost:5000/api/metrics/history', {
+            // --- IMPORTANT: Ensure this URL matches your backend service name in docker-compose.yml ---
+            const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/metrics/history`, {
                 headers: { 'x-auth-token': token },
                 params: params,
             });
@@ -296,156 +306,174 @@ function App() {
 
   const uniqueHostnames = useMemo(() => [...new Set(latestMetrics.map(m => m.hostname))], [latestMetrics]);
 
-  // --- Rendering Logic ---
-  if (!token) {
-    return <Auth setToken={handleSetToken} />;
-  }
-
+  // --- Rendering Logic - NOW USING REACT ROUTER ---
   return (
-    <div style={dashboardStyles.container}>
-      {/* Header and Logout */}
-      <div style={dashboardStyles.header}>
-        <h1 style={dashboardStyles.title}>System Health Dashboard</h1>
-        <div style={dashboardStyles.userInfo}>
-          {userRole && <span style={dashboardStyles.userRole}>Role: {userRole}</span>}
-          <button onClick={handleLogout} style={dashboardStyles.logoutButton}>
-            Logout
-          </button>
-        </div>
-      </div>
+    <div style={dashboardStyles.container}> {/* This container can wrap your Routes */}
+      <Routes>
+        {/* Route for Login Page */}
+        <Route path="/login" element={<Auth setToken={handleSetToken} />} />
 
-      {/* Latest Metrics Section */}
-      <div style={dashboardStyles.section}>
-        <h2 style={dashboardStyles.sectionTitle}>Current System Overview</h2>
-        {latestLoading && <div style={dashboardStyles.loadingSpinner}></div>}
-        {latestError && <p style={dashboardStyles.errorMessage}>Error: {latestError}</p>}
-        {!latestLoading && !latestError && latestMetrics.length === 0 && (
-          <p style={dashboardStyles.noDataMessage}>No live metrics available. Ensure agents are running.</p>
+        {/* Route for Registration Page */}
+        <Route path="/register" element={<Auth setToken={handleSetToken} isRegister={true} />} />
+
+        {/* Protected Route for Dashboard - Rendered only if token exists */}
+        {token ? (
+          <Route path="/dashboard" element={
+            <>
+              {/* Header and Logout */}
+              <div style={dashboardStyles.header}>
+                <h1 style={dashboardStyles.title}>System Health Dashboard</h1>
+                <div style={dashboardStyles.userInfo}>
+                  {userRole && <span style={dashboardStyles.userRole}>Role: {userRole}</span>}
+                  <button onClick={handleLogout} style={dashboardStyles.logoutButton}>
+                    Logout
+                  </button>
+                </div>
+              </div>
+
+              {/* Latest Metrics Section */}
+              <div style={dashboardStyles.section}>
+                <h2 style={dashboardStyles.sectionTitle}>Current System Overview</h2>
+                {latestLoading && <div style={dashboardStyles.loadingSpinner}></div>}
+                {latestError && <p style={dashboardStyles.errorMessage}>Error: {latestError}</p>}
+                {!latestLoading && !latestError && latestMetrics.length === 0 && (
+                  <p style={dashboardStyles.noDataMessage}>No live metrics available. Ensure agents are running.</p>
+                )}
+                {!latestLoading && !latestError && latestMetrics.length > 0 && (
+                  <div style={dashboardStyles.gridContainer}>
+                    <div style={dashboardStyles.chartCard}>
+                      <Bar data={latestChartData.cpu} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live CPU Usage by Host" } } }} />
+                    </div>
+                    <div style={dashboardStyles.chartCard}>
+                      <Bar data={latestChartData.memory} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Memory Usage by Host" } } }} />
+                    </div>
+                    <div style={dashboardStyles.chartCard}>
+                      <Bar data={latestChartData.disk} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Disk Usage by Host" } } }} />
+                    </div>
+                  </div>
+                )}
+
+                {!latestLoading && !latestError && latestMetrics.length > 0 && (
+                  <div style={dashboardStyles.systemDetailsTable}>
+                    <h3>Live System Details</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>OS</th>
+                                <th>Uptime</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {latestMetrics.map(m => (
+                                <tr key={m.hostname}>
+                                    <td>{m.hostname}</td>
+                                    <td>{m.os}</td>
+                                    <td>{formatUptime(m.uptime)}</td>
+                                    <td>{new Date(m.timestamp).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Historical Data Section */}
+              <div style={dashboardStyles.section}>
+                <h2 style={dashboardStyles.sectionTitle}>Historical Performance Trends</h2>
+                {latestMetrics.length > 0 && ( // Only show selector if there are hosts
+                  <div style={dashboardStyles.flexContainer}>
+                    <div style={{ marginRight: '20px' }}>
+                      <label htmlFor="hostname-select" style={dashboardStyles.label}>Select Host:</label>
+                      <select
+                        id="hostname-select"
+                        value={selectedHostname}
+                        onChange={(e) => setSelectedHostname(e.target.value)}
+                        style={dashboardStyles.select}
+                      >
+                        {uniqueHostnames.map(host => (
+                          <option key={host} value={host}>{host}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={dashboardStyles.label}>From:</label>
+                      <DatePicker
+                        selected={historicalStartDate}
+                        onChange={(date) => setHistoricalStartDate(date)}
+                        selectsStart
+                        startDate={historicalStartDate}
+                        endDate={historicalEndDate}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="custom-datepicker-input" // Add a class for custom styling
+                        wrapperClassName="custom-datepicker-wrapper"
+                      />
+                    </div>
+                    <div>
+                      <label style={dashboardStyles.label}>To:</label>
+                      <DatePicker
+                        selected={historicalEndDate}
+                        onChange={(date) => setHistoricalEndDate(date)}
+                        selectsEnd
+                        startDate={historicalStartDate}
+                        endDate={historicalEndDate}
+                        minDate={historicalStartDate}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="custom-datepicker-input" // Add a class for custom styling
+                        wrapperClassName="custom-datepicker-wrapper"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {historicalLoading && <div style={dashboardStyles.loadingSpinner}></div>}
+                {historicalError && <p style={dashboardStyles.errorMessage}>Error: {historicalError}</p>}
+                {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length === 0 && (
+                  <p style={dashboardStyles.noDataMessage}>No historical data available for {selectedHostname} in the selected period.</p>
+                )}
+
+                {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length > 0 && (
+                  <div style={dashboardStyles.gridContainer}>
+                    <div style={dashboardStyles.chartCard}>
+                      <Line data={historicalChartData.cpu} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `CPU Usage Trend for ${selectedHostname}` } } }} />
+                    </div>
+                    <div style={dashboardStyles.chartCard}>
+                      <Line data={historicalChartData.memory} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Memory Usage Trend for ${selectedHostname}` } } }} />
+                    </div>
+                    <div style={dashboardStyles.chartCard}>
+                      <Line data={historicalChartData.disk} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Disk Usage Trend for ${selectedHostname}` } } }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Report Generation Section */}
+              {!latestLoading && !latestError && (
+                <div style={dashboardStyles.section}>
+                  <ReportGenerator token={token} hostnames={uniqueHostnames} />
+                </div>
+              )}
+            </>
+          } />
+        ) : (
+          // If there's no token, redirect any protected route access to /login
+          // This ensures if someone tries to go to /dashboard directly without login, they are sent to /login
+          <Route path="/dashboard" element={<Navigate to="/login" />} />
         )}
-        {!latestLoading && !latestError && latestMetrics.length > 0 && (
-          <div style={dashboardStyles.gridContainer}>
-            <div style={dashboardStyles.chartCard}>
-              <Bar data={latestChartData.cpu} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live CPU Usage by Host" } } }} />
-            </div>
-            <div style={dashboardStyles.chartCard}>
-              <Bar data={latestChartData.memory} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Memory Usage by Host" } } }} />
-            </div>
-            <div style={dashboardStyles.chartCard}>
-              <Bar data={latestChartData.disk} options={{ ...commonChartOptions, plugins: { ...commonChartOptions.plugins, title: { display: true, text: "Live Disk Usage by Host" } } }} />
-            </div>
-          </div>
-        )}
 
-        {!latestLoading && !latestError && latestMetrics.length > 0 && (
-          <div style={dashboardStyles.systemDetailsTable}>
-            <h3>Live System Details</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Hostname</th>
-                        <th>OS</th>
-                        <th>Uptime</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {latestMetrics.map(m => (
-                        <tr key={m.hostname}>
-                            <td>{m.hostname}</td>
-                            <td>{m.os}</td>
-                            <td>{formatUptime(m.uptime)}</td>
-                            <td>{new Date(m.timestamp).toLocaleString()}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Historical Data Section */}
-      <div style={dashboardStyles.section}>
-        <h2 style={dashboardStyles.sectionTitle}>Historical Performance Trends</h2>
-        {latestMetrics.length > 0 && ( // Only show selector if there are hosts
-          <div style={dashboardStyles.flexContainer}>
-            <div style={{ marginRight: '20px' }}>
-              <label htmlFor="hostname-select" style={dashboardStyles.label}>Select Host:</label>
-              <select
-                id="hostname-select"
-                value={selectedHostname}
-                onChange={(e) => setSelectedHostname(e.target.value)}
-                style={dashboardStyles.select}
-              >
-                {uniqueHostnames.map(host => (
-                  <option key={host} value={host}>{host}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={dashboardStyles.label}>From:</label>
-              <DatePicker
-                selected={historicalStartDate}
-                onChange={(date) => setHistoricalStartDate(date)}
-                selectsStart
-                startDate={historicalStartDate}
-                endDate={historicalEndDate}
-                showTimeSelect
-                dateFormat="Pp"
-                className="custom-datepicker-input" // Add a class for custom styling
-                wrapperClassName="custom-datepicker-wrapper"
-              />
-            </div>
-            <div>
-              <label style={dashboardStyles.label}>To:</label>
-              <DatePicker
-                selected={historicalEndDate}
-                onChange={(date) => setHistoricalEndDate(date)}
-                selectsEnd
-                startDate={historicalStartDate}
-                endDate={historicalEndDate}
-                minDate={historicalStartDate}
-                showTimeSelect
-                dateFormat="Pp"
-                className="custom-datepicker-input" // Add a class for custom styling
-                wrapperClassName="custom-datepicker-wrapper"
-              />
-            </div>
-          </div>
-        )}
-
-        {historicalLoading && <div style={dashboardStyles.loadingSpinner}></div>}
-        {historicalError && <p style={dashboardStyles.errorMessage}>Error: {historicalError}</p>}
-        {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length === 0 && (
-          <p style={dashboardStyles.noDataMessage}>No historical data available for {selectedHostname} in the selected period.</p>
-        )}
-
-        {!historicalLoading && !historicalError && selectedHostname && historicalMetrics.length > 0 && (
-          <div style={dashboardStyles.gridContainer}>
-            <div style={dashboardStyles.chartCard}>
-              <Line data={historicalChartData.cpu} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `CPU Usage Trend for ${selectedHostname}` } } }} />
-            </div>
-            <div style={dashboardStyles.chartCard}>
-              <Line data={historicalChartData.memory} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Memory Usage Trend for ${selectedHostname}` } } }} />
-            </div>
-            <div style={dashboardStyles.chartCard}>
-              <Line data={historicalChartData.disk} options={{ ...historicalChartOptions, plugins: { ...historicalChartOptions.plugins, title: { display: true, text: `Disk Usage Trend for ${selectedHostname}` } } }} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Report Generation Section */}
-      {!latestLoading && !latestError && (
-        <div style={dashboardStyles.section}>
-          <ReportGenerator token={token} hostnames={uniqueHostnames} />
-        </div>
-      )}
-
+        {/* Catch-all route: Redirects to /dashboard if logged in, otherwise to /login */}
+        {/* This handles direct access to '/' or any undefined path */}
+        <Route path="*" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+      </Routes>
     </div>
   );
 }
 
-// --- Basic Inline Styles (Highly recommend moving to a CSS module or framework) ---
+// --- Basic Inline Styles (Keep as is) ---
 const dashboardStyles = {
     container: {
         maxWidth: '1200px',
