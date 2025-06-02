@@ -87,16 +87,23 @@ describe('App component', () => {
     localStorage.setItem('token', 'fake-token');
     localStorage.setItem('role', 'user');
 
+    let renderResult;
     // Wrap render in act to ensure all async effects are processed
     await act(async () => {
-      render(
+      renderResult = render(
         <AuthProvider> {/* Wrap App with AuthProvider */}
           <App />
         </AuthProvider>
       );
     });
 
-    // Use findByRole and findByText as these elements appear after async operations
+    // Explicitly wait for the axios call to be made and its promise to settle
+    // This helps ensure the component has finished its data fetching cycle
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(`${process.env.REACT_APP_BACKEND_URL}/api/metrics`);
+    });
+
+    // Now, assert for the elements that should be present after successful data fetch
     expect(await screen.findByRole('heading', { name: /System Monitoring Dashboard/i })).toBeInTheDocument();
     expect(await screen.findByText(/Latest System Metrics Summary/i)).toBeInTheDocument();
   });
