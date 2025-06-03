@@ -11,7 +11,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo --port 27017 --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh --port 27017 --quiet
       interval: 10s
       timeout: 5s
       retries: 5
