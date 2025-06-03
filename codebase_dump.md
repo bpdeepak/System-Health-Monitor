@@ -65,13 +65,15 @@
 │   ├── package.json
 │   ├── package-lock.json
 │   └── README.md
+├── prometheus/
+│   └── prometheus.yml
 ├── codebase_dump.md
 ├── docker-compose.yml
 ├── generate_codebook.sh*
 ├── Jenkinsfile-CI
 └── README.md
 
-15 directories, 54 files
+16 directories, 55 files
 ```
 
 
@@ -337,7 +339,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1h' },
       (err, token) => {
         if (err) throw err;
-        res.json({ token, msg: 'Logged in successfully', id: user.id });
+        res.json({
+          token,
+          msg: 'Logged in successfully',
+          user: { // <--- ADD THIS 'user' OBJECT
+            id: user.id,
+            role: user.role // <--- ENSURE user.role IS INCLUDED HERE
+          }
+        });
       }
     );
   } catch (err) {
@@ -1429,32 +1438,138 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 
 ### `./frontend/src/App.css`
 ```css
-/* Main Layout & Containers */
-.container {
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+/* Modern CSS Variables - Dark Mode Ready */
+:root {
+  /* Primary Colors */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-blue: #6366f1;
+  --primary-blue-light: #8b5cf6;
+  --primary-blue-dark: #4f46e5;
+  
+  /* Accent Colors */
+  --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --accent-light-blue: #06b6d4;
+  --accent-dark-blue: #0891b2;
+  
+  /* Neutral Colors */
+  --background: #fafafb;
+  --card-background: #ffffff;
+  --glass-background: rgba(255, 255, 255, 0.85);
+  --surface-elevated: #f8fafc;
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-light: #cbd5e1;
+  
+  /* Border Colors */
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-focus: var(--primary-blue);
+  
+  /* Status Colors */
+  --success-green: #10b981;
+  --success-green-dark: #059669;
+  --warning-orange: #f59e0b;
+  --warning-orange-dark: #d97706;
+  --danger-red: #ef4444;
+  --danger-red-dark: #dc2626;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  
+  /* Animation */
+  --transition-fast: 0.15s ease-out;
+  --transition-normal: 0.3s ease-out;
+  --transition-slow: 0.5s ease-out;
 }
 
-/* Navbar Styles */
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Main Layout & Containers */
+.container {
+  max-width: 1280px;
+  margin: var(--spacing-xl) auto;
+  padding: var(--spacing-2xl);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Modern Navbar */
 .navbar {
-  background-color: #2c3e50; /* Dark blue-grey */
-  padding: 15px 20px;
+  background: var(--primary-gradient);
+  padding: var(--spacing-lg) var(--spacing-xl);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: var(--spacing-2xl);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 .navbar-brand {
-  color: #ecf0f1; /* Light grey */
-  font-size: 1.8em;
-  font-weight: bold;
+  color: white;
+  font-size: 1.875rem;
+  font-weight: 700;
   text-decoration: none;
+  background: linear-gradient(45deg, #ffffff, #f1f5f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: var(--transition-normal);
+}
+
+.navbar-brand:hover {
+  transform: translateY(-1px);
 }
 
 .navbar-nav {
@@ -1462,402 +1577,755 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
   display: flex;
   margin: 0;
   padding: 0;
+  gap: var(--spacing-lg);
 }
 
 .nav-item {
-  margin-left: 25px;
+  position: relative;
 }
 
 .nav-link {
-  color: #bdc3c7; /* Lighter grey */
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
-  font-size: 1.1em;
-  transition: color 0.3s ease;
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: var(--transition-normal);
 }
 
 .nav-link:hover {
-  color: #3498db; /* Bright blue */
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.nav-link:hover::before {
+  left: 0;
 }
 
 .logout-btn {
-  background-color: #e74c3c; /* Red */
+  background: linear-gradient(135deg, var(--danger-red), var(--danger-red-dark));
   color: white;
-  padding: 8px 15px;
-  font-size: 0.9em;
-  margin-left: 20px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  box-shadow: var(--shadow-md);
 }
 
 .logout-btn:hover {
-  background-color: #c0392b; /* Darker red */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, var(--danger-red-dark), #b91c1c);
 }
 
-/* Auth Component Styles (Login/Register Forms) */
+/* Modern Auth Components */
 .auth-container {
-  max-width: 450px;
-  margin: 50px auto;
-  padding: 40px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  max-width: 480px;
+  margin: var(--spacing-2xl) auto;
+  padding: var(--spacing-2xl);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-glass);
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg at 50% 50%, rgba(99, 102, 241, 0.1), transparent, rgba(139, 92, 246, 0.1), transparent);
+  animation: rotate 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rotate {
+  to { transform: rotate(360deg); }
 }
 
 .auth-container h2 {
-  color: #34495e; /* Dark grey-blue */
-  margin-bottom: 30px;
-  font-size: 2em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-xl);
+  font-size: 2.25rem;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
 }
 
 .auth-form .form-group {
-  margin-bottom: 25px;
+  margin-bottom: var(--spacing-lg);
   text-align: left;
+  position: relative;
+  z-index: 1;
 }
 
 .auth-form label {
   display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
-  color: #555;
-  font-size: 0.95em;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .auth-form input[type="text"],
 .auth-form input[type="password"],
 .auth-form select {
   width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1em;
-  color: #333;
-  transition: border-color 0.3s ease;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  transition: var(--transition-normal);
 }
 
-.auth-form input[type="text"]:focus,
-.auth-form input[type="password"]:focus,
+.auth-form input:focus,
 .auth-form select:focus {
   outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  border-color: var(--primary-blue);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
-  background-color: #3498db; /* Bright blue */
+  background: var(--primary-gradient);
   color: white;
   width: 100%;
-  padding: 12px 20px;
-  font-size: 1.1em;
-  font-weight: bold;
-  margin-top: 15px;
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  margin-top: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: var(--transition-normal);
 }
 
 .btn-primary:hover {
-  background-color: #2980b9; /* Darker blue */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .link-style {
-  color: #3498db;
+  color: var(--primary-blue);
   cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.3s ease;
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition-normal);
+  position: relative;
 }
 
-.link-style:hover {
-  color: #2980b9;
+.link-style::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary-gradient);
+  transition: var(--transition-normal);
+}
+
+.link-style:hover::after {
+  width: 100%;
+}
+
+/* Modern Status Messages */
+.success-message,
+.error-message {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  margin-top: var(--spacing-lg);
+  font-weight: 500;
+  border-left: 4px solid;
+  backdrop-filter: blur(10px);
 }
 
 .success-message {
-  color: #27ae60; /* Green */
-  background-color: #e6ffee;
-  border: 1px solid #27ae60;
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 20px;
-  font-weight: bold;
+  color: var(--success-green-dark);
+  background: rgba(16, 185, 129, 0.1);
+  border-left-color: var(--success-green);
 }
 
 .error-message {
-  color: #e74c3c; /* Red */
-  background-color: #ffe6e6;
-  border: 1px solid #e74c3c;
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 20px;
-  font-weight: bold;
+  color: var(--danger-red-dark);
+  background: rgba(239, 68, 68, 0.1);
+  border-left-color: var(--danger-red);
 }
 
-/* Dashboard Styles */
+/* Modern Dashboard */
 .dashboard-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 25px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
 }
 
 .latest-metrics-summary {
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 25px;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-  grid-column: span 2; /* Spans across two columns if available */
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-glass);
+  grid-column: span 2;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.latest-metrics-summary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--primary-gradient);
 }
 
 .latest-metrics-summary h3 {
-  color: #34495e;
-  margin-bottom: 20px;
-  font-size: 1.6em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-xl);
+  font-size: 1.875rem;
+  font-weight: 700;
 }
 
 .metric-grid {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  flex-wrap: wrap;
 }
 
 .metric-card {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  flex: 1; /* Allows cards to grow and shrink */
-  min-width: 180px; /* Minimum width for each card */
-  max-width: 250px; /* Max width to control sizing in large screens */
+  box-shadow: var(--shadow-md);
+  flex: 1;
+  min-width: 200px;
+  max-width: 280px;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-gradient);
+  transform: scaleX(0);
+  transition: var(--transition-normal);
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.metric-card:hover::before {
+  transform: scaleX(1);
 }
 
 .metric-label {
-  font-size: 1.1em;
-  color: #7f8c8d; /* Grey */
-  margin-bottom: 10px;
-  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .metric-value {
-  font-size: 2.2em;
-  font-weight: bold;
-  color: #2c3e50;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  transition: var(--transition-normal);
 }
 
+/* Status-based colors for metrics */
 .metric-value.critical {
-  color: #e74c3c; /* Red for critical values */
+  background: linear-gradient(135deg, var(--danger-red), var(--danger-red-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Chart Card Styles */
+.metric-value.warning {
+  background: linear-gradient(135deg, var(--warning-orange), var(--warning-orange-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.metric-value.normal {
+  background: linear-gradient(135deg, var(--success-green), var(--success-green-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Modern Chart Cards */
 .chart-card {
-    background-color: #ffffff;
-    border-radius: 10px;
-    padding: 25px;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-    margin-top: 20px;
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-glass);
+  margin-top: var(--spacing-xl);
+  position: relative;
+  overflow: hidden;
 }
 
-/* Reports Page Styles */
+.chart-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--accent-gradient);
+}
+
+/* Modern Reports Page */
 .reports-container {
-  padding: 20px;
+  padding: var(--spacing-xl);
 }
 
 .reports-container h2 {
-  color: #34495e;
-  margin-bottom: 25px;
-  font-size: 2em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-xl);
+  font-size: 2.25rem;
+  font-weight: 700;
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 30px;
-  background-color: #f9f9f9;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  align-items: flex-end; /* Align items to the bottom */
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  align-items: flex-end;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  flex: 1; /* Allow filter groups to take available space */
-  min-width: 180px; /* Minimum width for responsiveness */
+  flex: 1;
+  min-width: 200px;
 }
 
 .filter-group label {
-  margin-bottom: 8px;
-  font-weight: bold;
-  color: #555;
-  font-size: 0.95em;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .filters input[type="text"],
 .filters input[type="date"],
 .filters select {
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1em;
-  color: #333;
-  width: 100%; /* Full width within its filter-group */
-  transition: border-color 0.3s ease;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  width: 100%;
+  transition: var(--transition-normal);
 }
 
-.filters input[type="text"]:focus,
-.filters input[type="date"]:focus,
+.filters input:focus,
 .filters select:focus {
   outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  border-color: var(--primary-blue);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
 }
 
 .filters button {
-  padding: 10px 25px;
-  background-color: #2ecc71; /* Green */
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--accent-gradient);
   color: white;
-  font-weight: bold;
-  white-space: nowrap; /* Prevent text wrapping */
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
 }
 
 .filters button:hover {
-  background-color: #27ae60; /* Darker green */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-/* React Datepicker overrides for better styling */
-.react-datepicker-wrapper {
+/* Modern Tables */
+.report-table,
+.latest-metrics-table {
   width: 100%;
-}
-
-.react-datepicker__input-container input {
-  width: 100%;
-}
-
-/* Report Table Styles */
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 25px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  overflow: hidden; /* Ensures rounded corners on table */
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: var(--spacing-xl);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-glass);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
 }
 
 .report-table th,
-.report-table td {
-  padding: 15px 20px;
+.report-table td,
+.latest-metrics-table th,
+.latest-metrics-table td {
+  padding: var(--spacing-lg) var(--spacing-xl);
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
 }
 
-.report-table th {
-  background-color: #f2f4f6; /* Lighter background for headers */
-  color: #555;
-  font-weight: bold;
+.report-table th,
+.latest-metrics-table th {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  color: var(--text-secondary);
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.9em;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
 }
 
-.report-table tbody tr:last-child td {
+.report-table tbody tr:last-child td,
+.latest-metrics-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.report-table tbody tr:hover {
-  background-color: #f5f5f5;
+.report-table tbody tr,
+.latest-metrics-table tbody tr {
+  transition: var(--transition-fast);
 }
 
-/* Admin Panel Styles */
+.report-table tbody tr:hover,
+.latest-metrics-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.05);
+  transform: scale(1.01);
+}
+
+/* Modern Admin Panel */
 .admin-panel-container {
-  padding: 20px;
+  padding: var(--spacing-xl);
 }
 
 .admin-panel-container h2 {
-  color: #34495e;
-  margin-bottom: 25px;
-  font-size: 2em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-xl);
+  font-size: 2.25rem;
+  font-weight: 700;
 }
 
 .user-management-section {
-    background-color: #f9f9f9;
-    border-radius: 10px;
-    padding: 25px;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-    margin-bottom: 30px;
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-glass);
+  margin-bottom: var(--spacing-2xl);
 }
 
 .user-management-section h3 {
-    color: #34495e;
-    margin-bottom: 20px;
-    font-size: 1.6em;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-xl);
+  font-size: 1.75rem;
+  font-weight: 600;
 }
 
 .user-list {
-    list-style: none;
-    padding: 0;
+  list-style: none;
+  padding: 0;
 }
 
 .user-list-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  transition: var(--transition-normal);
 }
 
 .user-list-item:last-child {
-    border-bottom: none;
+  border-bottom: none;
+}
+
+.user-list-item:hover {
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: var(--radius-lg);
+  margin: 0 calc(-1 * var(--spacing-md));
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
 }
 
 .user-info span {
-    font-size: 1.1em;
-    color: #333;
-    margin-right: 15px;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-right: var(--spacing-lg);
 }
 
 .user-info span strong {
-    font-weight: bold;
-    color: #2c3e50;
+  font-weight: 700;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .action-buttons button {
-    margin-left: 10px;
-    padding: 8px 15px;
-    font-size: 0.9em;
+  margin-left: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-normal);
 }
 
 .delete-btn {
-    background-color: #e74c3c;
-    color: white;
+  background: linear-gradient(135deg, var(--danger-red), var(--danger-red-dark));
+  color: white;
 }
 
 .delete-btn:hover {
-    background-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .make-admin-btn {
-    background-color: #f39c12; /* Orange */
-    color: white;
+  background: linear-gradient(135deg, var(--warning-orange), var(--warning-orange-dark));
+  color: white;
 }
 
 .make-admin-btn:hover {
-    background-color: #e67e22; /* Darker orange */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-/* Spinner Animation for Loading States */
+/* Modern Loading Spinner */
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  margin: var(--spacing-2xl) auto;
+  position: relative;
+}
+
+.loading-spinner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 4px solid transparent;
+  border-top: 4px solid var(--primary-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  border: 4px solid transparent;
+  border-bottom: 4px solid var(--accent-light-blue);
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite reverse;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
-.loading-spinner {
-  border: 4px solid #f3f3f3; /* Light grey */
-  border-top: 4px solid #3498db; /* Blue */
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 50px auto; /* Center the spinner */
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    margin: var(--spacing-md);
+    padding: var(--spacing-lg);
+  }
+  
+  .navbar {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+  }
+  
+  .navbar-nav {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    width: 100%;
+  }
+  
+  .filters {
+    flex-direction: column;
+  }
+  
+  .filter-group {
+    min-width: auto;
+  }
+  
+  .dashboard-container {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+  
+  .latest-metrics-summary {
+    grid-column: span 1;
+  }
+  
+  .metric-grid {
+    flex-direction: column;
+  }
+  
+  .user-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
+  .action-buttons {
+    align-self: stretch;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --card-background: #1e293b;
+    --glass-background: rgba(30, 41, 59, 0.85);
+    --surface-elevated: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-light: #64748b;
+    --border-light: #334155;
+    --border-medium: #475569;
+  }
+}
+
+/* Utility Classes */
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 ```
 
@@ -2263,11 +2731,28 @@ export default Auth;
 
 ### `./frontend/src/components/Dashboard.js`
 ```js
-// frontend/src/components/Dashboard.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
+
+// --- Define a consistent color palette for charts ---
+const CHART_LINE_COLORS = [
+  '#3498db', // Accent blue
+  '#2ecc71', // Success green
+  '#e74c3c', // Danger red
+  '#f39c12', // Warning orange
+  '#9b59b6', // Amethyst purple
+  '#1abc9c', // Turquoise
+  '#f1c40f', // Sunflower yellow
+  '#34495e', // Primary dark blue-grey
+  '#7f8c8d', // Wet asphalt grey
+  '#d35400'  // Pumpkin orange
+];
+
+// Helper function to get a color from the palette
+const getChartColor = (index) => CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
+// --- END NEW ---
 
 function Dashboard() {
   const { isAuthenticated, logout } = useAuth();
@@ -2304,7 +2789,7 @@ function Dashboard() {
     if (timeRange === 'custom' && customStartDate && customEndDate) {
       params.append('startDate', customStartDate);
       params.append('endDate', customEndDate);
-    } else {
+    } else if (timeRange !== 'custom') { // Only append timeRange if not custom
       params.append('timeRange', timeRange);
     }
 
@@ -2333,7 +2818,6 @@ function Dashboard() {
       setLoading(false);
     }
   }, [logout, navigate, selectedHostname, timeRange, customStartDate, customEndDate]);
-
 
   const fetchLatestMetrics = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -2364,7 +2848,8 @@ function Dashboard() {
       });
       const data = await response.json();
       if (response.ok) {
-        setAvailableHostnames(data);
+        // Ensure 'all' option is always present and at the beginning
+        setAvailableHostnames(['all', ...data.filter(host => host !== 'all')]);
       } else {
         console.error('Failed to fetch hostnames:', data.message);
       }
@@ -2389,37 +2874,37 @@ function Dashboard() {
 
   // Data preparation for charts
   const chartData = useMemo(() => {
-    const grouped = metrics.reduce((acc, metric) => {
-      const hostname = metric.hostname || 'unknown';
-      if (!acc[hostname]) {
-        acc[hostname] = [];
-      }
-      acc[hostname].push({
+    // If 'all' is selected, we need to process data for all hosts.
+    // Recharts expects an array of objects for the `data` prop.
+    // When displaying multiple lines, each line's data should be part of these objects.
+    // For "all hosts", we'll return a flat array where each object contains
+    // the metric for a specific timestamp and hostname, allowing Recharts
+    // to draw separate lines based on the `dataKey` and `name` in Area/Line.
+    if (selectedHostname === 'all') {
+      const allMetricsProcessed = metrics.map(metric => ({
         ...metric,
         timestamp: new Date(metric.timestamp).toLocaleString(),
         cpuUsage: metric.cpu,
         memoryUsage: metric.memory,
         diskUsage: metric.disk
-      });
-      return acc;
-    }, {});
-
-    Object.keys(grouped).forEach(hostname => {
-      grouped[hostname].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    });
-
-    if (selectedHostname === 'all' && Object.keys(grouped).length > 0) {
-      return metrics.map(metric => ({
-        ...metric,
-        timestamp: new Date(metric.timestamp).toLocaleString(),
-        cpuUsage: metric.cpu,
-        memoryUsage: metric.memory,
-        diskUsage: metric.disk
-      })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }));
+      // Sort by timestamp to ensure proper chart rendering
+      return allMetricsProcessed.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    } else {
+      // If a specific hostname is selected, filter and format
+      return metrics
+        .filter(metric => metric.hostname === selectedHostname)
+        .map(metric => ({
+          ...metric,
+          timestamp: new Date(metric.timestamp).toLocaleString(),
+          cpuUsage: metric.cpu,
+          memoryUsage: metric.memory,
+          diskUsage: metric.disk
+        }))
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     }
-
-    return grouped[selectedHostname] || [];
   }, [metrics, selectedHostname]);
+
 
   const latestMetricsDisplay = useMemo(() => {
     if (!Array.isArray(latestMetrics)) {
@@ -2453,10 +2938,12 @@ function Dashboard() {
 
 
   if (loading && metrics.length === 0) {
+    // Apply styling to loading container
     return <div className="loading-container">Loading dashboard data...</div>;
   }
 
   if (error) {
+    // Apply styling to error container
     return <div className="error-container">Error: {error}</div>;
   }
 
@@ -2464,59 +2951,68 @@ function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>System Monitoring Dashboard</h2>
-        <div className="filters">
-          <label htmlFor="hostname-select">Hostname:</label>
-          <select
-            id="hostname-select"
-            value={selectedHostname}
-            onChange={(e) => setSelectedHostname(e.target.value)}
-          >
-            {availableHostnames.map((host) => (
-              <option key={host} value={host}>
-                {host === 'all' ? 'All Hosts' : host}
-              </option>
-            ))}
-          </select>
+        {/* --- NEW: Add 'card' class to filters div for consistent styling --- */}
+        <div className="filters card">
+          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
+            <label htmlFor="hostname-select">Hostname:</label>
+            <select
+              id="hostname-select"
+              value={selectedHostname}
+              onChange={(e) => setSelectedHostname(e.target.value)}
+            >
+              {availableHostnames.map((host) => (
+                <option key={host} value={host}>
+                  {host === 'all' ? 'All Hosts' : host}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <label htmlFor="time-range-select">Time Range:</label>
-          <select
-            id="time-range-select"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-          >
-            <option value="1h">Last Hour</option>
-            <option value="24h">Last 24 Hours</option>
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-            <option value="custom">Custom Range</option>
-          </select>
+          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
+            <label htmlFor="time-range-select">Time Range:</label>
+            <select
+              id="time-range-select"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+            >
+              <option value="1h">Last Hour</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
 
           {timeRange === 'custom' && (
             <>
-              <label htmlFor="start-date">Start Date:</label>
-              <input
-                type="datetime-local"
-                id="start-date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-              />
-              <label htmlFor="end-date">End Date:</label>
-              <input
-                type="datetime-local"
-                id="end-date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-              />
+              <div className="filter-group">
+                <label htmlFor="start-date">Start Date:</label>
+                <input
+                  type="datetime-local"
+                  id="start-date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+              </div>
+              <div className="filter-group">
+                <label htmlFor="end-date">End Date:</label>
+                <input
+                  type="datetime-local"
+                  id="end-date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
             </>
           )}
           <button onClick={fetchMetrics} className="btn-primary">Apply Filters</button>
         </div>
       </div>
 
-      <div className="latest-metrics-summary card">
+      <div className="latest-metrics-summary card"> {/* Already has 'card' */}
         <h3>Latest System Metrics Summary</h3>
         {latestMetricsDisplay.length > 0 ? (
-          <table>
+          <table className="latest-metrics-table"> {/* NEW: Add class for table styling */}
             <thead>
               <tr>
                 <th>Hostname</th>
@@ -2531,9 +3027,10 @@ function Dashboard() {
               {latestMetricsDisplay.map((metric, index) => (
                 <tr key={index}>
                   <td>{metric.hostname}</td>
-                  <td className={metric.cpuUsage > 80 ? 'critical' : ''}>{metric.cpuUsage.toFixed(2)}</td>
-                  <td className={metric.memoryUsage > 80 ? 'critical' : ''}>{metric.memoryUsage.toFixed(2)}</td>
-                  <td className={metric.diskUsage > 80 ? 'critical' : ''}>{metric.diskUsage.toFixed(2)}</td>
+                  {/* Apply .metric-value and status classes based on thresholds */}
+                  <td className={`metric-value ${metric.cpuUsage > 80 ? 'critical' : metric.cpuUsage > 60 ? 'warning' : 'normal'}`}>{metric.cpuUsage.toFixed(2)}</td>
+                  <td className={`metric-value ${metric.memoryUsage > 80 ? 'critical' : metric.memoryUsage > 60 ? 'warning' : 'normal'}`}>{metric.memoryUsage.toFixed(2)}</td>
+                  <td className={`metric-value ${metric.diskUsage > 80 ? 'critical' : metric.diskUsage > 60 ? 'warning' : 'normal'}`}>{metric.diskUsage.toFixed(2)}</td>
                   <td>{metric.uptime}</td>
                   <td>{metric.os}</td>
                 </tr>
@@ -2545,48 +3042,48 @@ function Dashboard() {
         )}
       </div>
 
-      <div className="charts-container">
-        <div className="chart-card card">
+      <div className="charts-container"> {/* NEW: Consider grid layout for charts if needed */}
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>CPU Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
+                // When 'all' is selected, render an Area for each unique hostname.
+                // The dataKey should remain 'cpuUsage' as it's consistent across all objects in chartData.
+                // The 'name' prop of Area will be used in the legend.
                 [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
                   <Area
                     key={`cpu-${hostname}`}
                     type="monotone"
                     dataKey="cpuUsage"
                     name={`${hostname} CPU`}
-                    stroke={`hsl(${index * 137}, 70%, 50%)`}
-                    fill={`hsl(${index * 137}, 70%, 50%)`}
+                    stroke={getChartColor(index)} // Use new color palette
+                    fill={getChartColor(index)}    // Use new color palette
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      cpuUsage: m.cpu,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
+                    // No need to pass data prop here when chartData already contains all data
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="cpuUsage" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} dot={false} />
+                // When a specific hostname is selected, render a single Area.
+                <Area type="monotone" dataKey="cpuUsage" stroke={CHART_LINE_COLORS[0]} fill={CHART_LINE_COLORS[0]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card">
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>Memory Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
@@ -2596,31 +3093,26 @@ function Dashboard() {
                     type="monotone"
                     dataKey="memoryUsage"
                     name={`${hostname} Memory`}
-                    stroke={`hsl(${index * 137 + 50}, 70%, 50%)`}
-                    fill={`hsl(${index * 137 + 50}, 70%, 50%)`}
+                    stroke={getChartColor(index + 1)} // Use new color palette (offset by 1 to get a different color)
+                    fill={getChartColor(index + 1)}
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      memoryUsage: m.memory,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="memoryUsage" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} dot={false} />
+                <Area type="monotone" dataKey="memoryUsage" stroke={CHART_LINE_COLORS[1]} fill={CHART_LINE_COLORS[1]} fillOpacity={0.3} dot={false} /> 
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card">
+        <div className="chart-card card"> {/* Already has 'card' */}
           <h3>Disk Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
+              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
               <Tooltip />
               <Legend />
               {selectedHostname === 'all' ? (
@@ -2630,19 +3122,14 @@ function Dashboard() {
                     type="monotone"
                     dataKey="diskUsage"
                     name={`${hostname} Disk`}
-                    stroke={`hsl(${index * 137 + 100}, 70%, 50%)`}
-                    fill={`hsl(${index * 137 + 100}, 70%, 50%)`}
+                    stroke={getChartColor(index + 2)} // Use new color palette (offset by 2)
+                    fill={getChartColor(index + 2)}
                     fillOpacity={0.3}
                     dot={false}
-                    data={metrics.filter(m => m.hostname === hostname).map(m => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp).toLocaleString(),
-                      diskUsage: m.disk,
-                    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="diskUsage" stroke="#ffc658" fill="#ffc658" fillOpacity={0.3} dot={false} />
+                <Area type="monotone" dataKey="diskUsage" stroke={CHART_LINE_COLORS[3]} fill={CHART_LINE_COLORS[3]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>
@@ -2967,47 +3454,548 @@ export const AuthProvider = ({ children }) => {
 
 ### `./frontend/src/index.css`
 ```css
-/* Basic CSS Reset */
-*,
-*::before,
-*::after {
+/* ============================================
+   MODERN CSS FOUNDATION
+   ============================================ */
+
+/* CSS Reset with Modern Additions */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* Remove default button and input styling */
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+/* Remove list styles */
+ul, ol {
+  list-style: none;
+}
+
+/* Remove default link styling */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Make images responsive by default */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================
+   CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   ============================================ */
+
+:root {
+  /* Color Palette - Enhanced with more variations */
+  --color-primary-50: #f0f4f8;
+  --color-primary-100: #d6e4ed;
+  --color-primary-200: #adc5d4;
+  --color-primary-300: #85a3ba;
+  --color-primary-400: #5d82a1;
+  --color-primary-500: #34495e; /* Main primary */
+  --color-primary-600: #2c3e50;
+  --color-primary-700: #243342;
+  --color-primary-800: #1c2833;
+  --color-primary-900: #151d25;
+
+  --color-accent-50: #e8f4fd;
+  --color-accent-100: #bee8fb;
+  --color-accent-200: #85d1f2;
+  --color-accent-300: #52bae8;
+  --color-accent-400: #3498db; /* Main accent */
+  --color-accent-500: #2980b9;
+  --color-accent-600: #2471a3;
+  --color-accent-700: #1f618d;
+  --color-accent-800: #1a5277;
+  --color-accent-900: #154360;
+
+  /* Neutral Colors */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f8f9fa;
+  --color-neutral-100: #f1f3f4;
+  --color-neutral-200: #e3e5e6;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
+  /* Semantic Colors */
+  --color-success-light: #d4edda;
+  --color-success: #2ecc71;
+  --color-success-dark: #27ae60;
+  
+  --color-warning-light: #fff3cd;
+  --color-warning: #f39c12;
+  --color-warning-dark: #e67e22;
+  
+  --color-danger-light: #f8d7da;
+  --color-danger: #e74c3c;
+  --color-danger-dark: #c0392b;
+
+  --color-info-light: #cce7ff;
+  --color-info: #17a2b8;
+  --color-info-dark: #138496;
+
+  /* Typography Scale */
+  --font-size-xs: 0.75rem;     /* 12px */
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 1.875rem;   /* 30px */
+  --font-size-4xl: 2.25rem;    /* 36px */
+  --font-size-5xl: 3rem;       /* 48px */
+
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Spacing Scale */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;    /* 2px */
+  --radius-base: 0.25rem;   /* 4px */
+  --radius-md: 0.375rem;    /* 6px */
+  --radius-lg: 0.5rem;      /* 8px */
+  --radius-xl: 0.75rem;     /* 12px */
+  --radius-2xl: 1rem;       /* 16px */
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 350ms ease;
+  --transition-bounce: 250ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+/* ============================================
+   DARK MODE SUPPORT
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-neutral-0: #111827;
+    --color-neutral-50: #1f2937;
+    --color-neutral-100: #374151;
+    --color-neutral-200: #4b5563;
+    --color-neutral-300: #6b7280;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #d1d5db;
+    --color-neutral-600: #e5e7eb;
+    --color-neutral-700: #f3f4f6;
+    --color-neutral-800: #f9fafb;
+    --color-neutral-900: #ffffff;
+  }
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px; /* Base font size for rem calculations */
+}
+
 body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Inter', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--color-neutral-900);
+  background-color: var(--color-neutral-0);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f2f5; /* Light grey background */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  color: #333; /* Darker text color for readability */
-  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+}
+
+/* Code Elements */
+code, pre, kbd, samp {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 
+    'Courier New', monospace;
+  font-size: 0.875em;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  background-color: var(--color-neutral-100);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-base);
+  font-weight: var(--font-weight-medium);
 }
 
-/* Global button styles */
-button {
+pre {
+  background-color: var(--color-neutral-100);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  border: 1px solid var(--color-neutral-200);
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* ============================================
+   MODERN BUTTON SYSTEM
+   ============================================ */
+
+.btn {
+  /* Base button styles */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  
   cursor: pointer;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 1em;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  user-select: none;
+  
+  transition: all var(--transition-base);
+  
+  /* Focus styles for accessibility */
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-400);
+    outline-offset: 2px;
+  }
+  
+  /* Disabled state */
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
-button:hover {
-  transform: translateY(-2px);
+/* Button Variants */
+.btn-primary {
+  background-color: var(--color-accent-400);
+  color: var(--color-neutral-0);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-accent-500);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
-button:active {
-  transform: translateY(0);
+.btn-secondary {
+  background-color: var(--color-neutral-0);
+  color: var(--color-neutral-700);
+  border-color: var(--color-neutral-300);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-neutral-50);
+    border-color: var(--color-neutral-400);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-accent-400);
+  border-color: var(--color-accent-400);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-accent-50);
+    transform: translateY(-1px);
+  }
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-neutral-600);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-neutral-100);
+    color: var(--color-neutral-900);
+  }
+}
+
+/* Button Sizes */
+.btn-sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--font-size-lg);
+}
+
+/* Status Button Variants */
+.btn-success {
+  background-color: var(--color-success);
+  color: var(--color-neutral-0);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-success-dark);
+  }
+}
+
+.btn-warning {
+  background-color: var(--color-warning);
+  color: var(--color-neutral-0);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-warning-dark);
+  }
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: var(--color-neutral-0);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-danger-dark);
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Flexbox Utilities */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+
+/* Grid Utilities */
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* Spacing Utilities */
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+.m-6 { margin: var(--space-6); }
+.m-8 { margin: var(--space-8); }
+
+/* Text Utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.font-light { font-weight: var(--font-weight-light); }
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+/* Color Utilities */
+.text-primary { color: var(--color-primary-500); }
+.text-accent { color: var(--color-accent-400); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-muted { color: var(--color-neutral-500); }
+
+/* Background Utilities */
+.bg-white { background-color: var(--color-neutral-0); }
+.bg-gray-50 { background-color: var(--color-neutral-50); }
+.bg-gray-100 { background-color: var(--color-neutral-100); }
+.bg-primary { background-color: var(--color-primary-500); }
+.bg-accent { background-color: var(--color-accent-400); }
+
+/* Border Utilities */
+.border { border: 1px solid var(--color-neutral-200); }
+.border-t { border-top: 1px solid var(--color-neutral-200); }
+.border-b { border-bottom: 1px solid var(--color-neutral-200); }
+.border-l { border-left: 1px solid var(--color-neutral-200); }
+.border-r { border-right: 1px solid var(--color-neutral-200); }
+.rounded { border-radius: var(--radius-base); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+/* Shadow Utilities */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow { box-shadow: var(--shadow-base); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Mobile First Breakpoints */
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sm\:text-lg { font-size: var(--font-size-lg); }
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .md\:text-xl { font-size: var(--font-size-xl); }
+  .md\:p-6 { padding: var(--space-6); }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .lg\:text-2xl { font-size: var(--font-size-2xl); }
+  .lg\:p-8 { padding: var(--space-8); }
+}
+
+@media (min-width: 1280px) {
+  .xl\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .xl\:text-3xl { font-size: var(--font-size-3xl); }
+}
+
+/* ============================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Focus management */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip to content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary-500);
+  color: var(--color-neutral-0);
+  padding: 8px;
+  border-radius: var(--radius-base);
+  text-decoration: none;
+  z-index: var(--z-tooltip);
+  
+  &:focus {
+    top: 6px;
+  }
 }
 ```
 
