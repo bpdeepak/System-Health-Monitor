@@ -49,7 +49,6 @@ function Dashboard() {
     let url = `${process.env.REACT_APP_BACKEND_URL}/api/metrics`;
     const params = new URLSearchParams();
 
-    // --- CRITICAL CHANGE: Use selectedDeviceName and append 'deviceName' param ---
     if (selectedDeviceName && selectedDeviceName !== 'all') {
       params.append('deviceName', selectedDeviceName);
     }
@@ -85,7 +84,7 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [logout, navigate, selectedDeviceName, timeRange, customStartDate, customEndDate]); // Updated dependency
+  }, [logout, navigate, selectedDeviceName, timeRange, customStartDate, customEndDate]);
 
   const fetchLatestMetrics = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -106,18 +105,17 @@ function Dashboard() {
     }
   }, []);
 
-  // --- CRITICAL CHANGE: Fetch device names from /api/devices ---
-  const fetchDeviceNames = useCallback(async () => { // Renamed from fetchHostnames
+  const fetchDeviceNames = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/devices`, { // Fetches from /api/devices
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/devices`, {
         headers: { 'x-auth-token': token },
       });
-      const data = await response.json(); // This will be an array of device names
+      const data = await response.json();
       if (response.ok) {
-        setAvailableDeviceNames(['all', ...data.filter(name => name !== 'all')]); // Ensure 'all' is first
+        setAvailableDeviceNames(['all', ...data.filter(name => name !== 'all')]);
       } else {
         console.error('Failed to fetch device names:', data.message);
       }
@@ -130,7 +128,7 @@ function Dashboard() {
     if (isAuthenticated) {
       fetchMetrics();
       fetchLatestMetrics();
-      fetchDeviceNames(); // Call the new fetchDeviceNames
+      fetchDeviceNames();
       // Set up interval for refreshing metrics
       const intervalId = setInterval(() => {
         fetchMetrics();
@@ -138,35 +136,52 @@ function Dashboard() {
       }, 30000); // Refresh every 30 seconds
       return () => clearInterval(intervalId); // Cleanup on component unmount
     }
-  }, [isAuthenticated, fetchMetrics, fetchLatestMetrics, fetchDeviceNames]); // Updated dependency
+  }, [isAuthenticated, fetchMetrics, fetchLatestMetrics, fetchDeviceNames]);
 
   // Data preparation for charts
   const chartData = useMemo(() => {
-    // If 'all' is selected, we need to process data for all devices.
-    if (selectedDeviceName === 'all') {
-      const allMetricsProcessed = metrics.map(metric => ({
-        ...metric,
-        timestamp: new Date(metric.timestamp).toLocaleString(),
-        cpuUsage: metric.cpuUsage, // Ensure these match the agent's new keys
-        memoryUsage: metric.memoryUsage,
-        diskUsage: metric.diskUsage
-      }));
-      // Sort by timestamp to ensure proper chart rendering
-      return allMetricsProcessed.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    } else {
-      // If a specific deviceName is selected, filter and format
-      return metrics
-        .filter(metric => metric.deviceName === selectedDeviceName) // Filter by deviceName
-        .map(metric => ({
-          ...metric,
-          timestamp: new Date(metric.timestamp).toLocaleString(),
-          cpuUsage: metric.cpuUsage,
-          memoryUsage: metric.memoryUsage,
-          diskUsage: metric.diskUsage
-        }))
-        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    if (!Array.isArray(metrics)) {
+      console.warn('Metrics is not an array:', metrics);
+      return [];
     }
-  }, [metrics, selectedDeviceName]); // Updated dependency
+
+    // Filter by selected deviceName if not 'all'
+    const filteredMetrics = selectedDeviceName === 'all'
+      ? metrics
+      : metrics.filter(metric => metric.deviceName === selectedDeviceName);
+
+    // Format data for Recharts
+    const processedData = filteredMetrics.map(metric => ({
+      ...metric,
+      timestamp: new Date(metric.timestamp).toLocaleString(),
+      cpuUsage: metric.cpuUsage,
+      memoryUsage: metric.memoryUsage,
+      diskUsage: metric.diskUsage
+    })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    return processedData;
+  }, [metrics, selectedDeviceName]);
+
+  // --- NEW: Dynamic Y-Axis Domain Calculation ---
+  const getYAxisDomain = useCallback((dataKey) => {
+    if (!chartData || chartData.length === 0) {
+      return [0, 100]; // Default domain if no data
+    }
+    const maxVal = Math.max(...chartData.map(d => d[dataKey] || 0)); // Get max value for the data key
+
+    if (maxVal < 10) {
+      return [0, 15]; // If max is very low, set a slightly higher upper bound
+    } else if (maxVal < 50) {
+      return [0, Math.min(100, Math.ceil(maxVal / 5) * 5 + 5)]; // Round up to nearest 5, add a buffer, max 100
+    } else {
+      return [0, 100]; // If high usage, keep it 0-100%
+    }
+  }, [chartData]);
+
+  const cpuDomain = useMemo(() => getYAxisDomain('cpuUsage'), [getYAxisDomain]);
+  const memoryDomain = useMemo(() => getYAxisDomain('memoryUsage'), [getYAxisDomain]);
+  const diskDomain = useMemo(() => getYAxisDomain('diskUsage'), [getYAxisDomain]);
+  // --- END NEW: Dynamic Y-Axis Domain Calculation ---
 
 
   const latestMetricsDisplay = useMemo(() => {
@@ -181,16 +196,15 @@ function Dashboard() {
         return null;
       }
 
-      // --- CRITICAL CHANGE: Use metric.deviceName and new metric keys ---
       const cpuUsage = metric.cpuUsage ?? 0;
       const memoryUsage = metric.memoryUsage ?? 0;
       const diskUsage = metric.diskUsage ?? 0;
       const uptime = metric.uptime ?? 0;
       const os = metric.os ?? 'N/A';
-      const deviceName = metric.deviceName ?? 'N/A'; // Use deviceName here
+      const deviceName = metric.deviceName ?? 'N/A';
 
       return {
-        deviceName: deviceName, // Return deviceName
+        deviceName: deviceName,
         cpuUsage: cpuUsage,
         memoryUsage: memoryUsage,
         diskUsage: diskUsage,
@@ -215,15 +229,15 @@ function Dashboard() {
         <h2>System Monitoring Dashboard</h2>
         <div className="filters card">
           <div className="filter-group">
-            <label htmlFor="device-select">Device Name:</label> {/* Changed label */}
+            <label htmlFor="device-select">Device Name:</label>
             <select
-              id="device-select" // Changed ID
+              id="device-select"
               value={selectedDeviceName}
               onChange={(e) => setSelectedDeviceName(e.target.value)}
             >
-              {availableDeviceNames.map((name) => ( // Use availableDeviceNames
+              {availableDeviceNames.map((name) => (
                 <option key={name} value={name}>
-                  {name === 'all' ? 'All Devices' : name} {/* Changed text */}
+                  {name === 'all' ? 'All Devices' : name}
                 </option>
               ))}
             </select>
@@ -276,7 +290,7 @@ function Dashboard() {
           <table className="latest-metrics-table">
             <thead>
               <tr>
-                <th>Device Name</th> {/* Changed Header */}
+                <th>Device Name</th>
                 <th>CPU Usage (%)</th>
                 <th>Memory Usage (%)</th>
                 <th>Disk Usage (%)</th>
@@ -287,7 +301,7 @@ function Dashboard() {
             <tbody>
               {latestMetricsDisplay.map((metric, index) => (
                 <tr key={index}>
-                  <td>{metric.deviceName}</td> {/* Display deviceName */}
+                  <td>{metric.deviceName}</td>
                   <td className={`metric-value ${metric.cpuUsage > 80 ? 'critical' : metric.cpuUsage > 60 ? 'warning' : 'normal'}`}>{metric.cpuUsage.toFixed(2)}</td>
                   <td className={`metric-value ${metric.memoryUsage > 80 ? 'critical' : metric.memoryUsage > 60 ? 'warning' : 'normal'}`}>{metric.memoryUsage.toFixed(2)}</td>
                   <td className={`metric-value ${metric.diskUsage > 80 ? 'critical' : metric.diskUsage > 60 ? 'warning' : 'normal'}`}>{metric.diskUsage.toFixed(2)}</td>
@@ -304,22 +318,22 @@ function Dashboard() {
 
       <div className="charts-container">
         <div className="chart-card card">
-          <h3>CPU Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
+          <h3>CPU Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
-              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
+              {/* --- NEW: Dynamic YAxis domain for CPU --- */}
+              <YAxis domain={cpuDomain} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
               {selectedDeviceName === 'all' ? (
-                // When 'all' is selected, render an Area for each unique deviceName.
-                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => (
                   <Area
                     key={`cpu-${deviceName}`}
                     type="monotone"
                     dataKey="cpuUsage"
-                    name={`${deviceName} CPU`} // Display deviceName
+                    name={`${deviceName} CPU`}
                     stroke={getChartColor(index)}
                     fill={getChartColor(index)}
                     fillOpacity={0.3}
@@ -334,21 +348,22 @@ function Dashboard() {
         </div>
 
         <div className="chart-card card">
-          <h3>Memory Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
+          <h3>Memory Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
-              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
+              {/* --- NEW: Dynamic YAxis domain for Memory --- */}
+              <YAxis domain={memoryDomain} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
               {selectedDeviceName === 'all' ? (
-                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => (
                   <Area
                     key={`mem-${deviceName}`}
                     type="monotone"
                     dataKey="memoryUsage"
-                    name={`${deviceName} Memory`} // Display deviceName
+                    name={`${deviceName} Memory`}
                     stroke={getChartColor(index + 1)}
                     fill={getChartColor(index + 1)}
                     fillOpacity={0.3}
@@ -363,21 +378,22 @@ function Dashboard() {
         </div>
 
         <div className="chart-card card">
-          <h3>Disk Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
+          <h3>Disk Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
-              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
+              {/* --- NEW: Dynamic YAxis domain for Disk --- */}
+              <YAxis domain={diskDomain} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
               {selectedDeviceName === 'all' ? (
-                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => (
                   <Area
                     key={`disk-${deviceName}`}
                     type="monotone"
                     dataKey="diskUsage"
-                    name={`${deviceName} Disk`} // Display deviceName
+                    name={`${deviceName} Disk`}
                     stroke={getChartColor(index + 2)}
                     fill={getChartColor(index + 2)}
                     fillOpacity={0.3}
