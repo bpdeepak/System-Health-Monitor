@@ -82,7 +82,7 @@ pipeline {
 
                         echo "Executing Docker Compose deployment on ${env.DEPLOY_SERVER_IP}"
                         sh """
-                    ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} bash -s << 'EOF'
+                    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} bash -s << 'EOF'
                         cd ${remoteAppPath}
 
                         echo "Logging into Docker Hub..."
