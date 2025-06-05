@@ -16,7 +16,6 @@
   --card-background: #ffffff;
   --glass-background: rgba(255, 255, 255, 0.85);
   --surface-elevated: #f8fafc;
-  --bg-secondary: #f1f5f9;
   
   /* Text Colors */
   --text-primary: #0f172a;
@@ -32,13 +31,10 @@
   /* Status Colors */
   --success-green: #10b981;
   --success-green-dark: #059669;
-  --warning-yellow: #f59e0b;
   --warning-orange: #f59e0b;
   --warning-orange-dark: #d97706;
-  --error-red: #ef4444;
   --danger-red: #ef4444;
   --danger-red-dark: #dc2626;
-  --info-blue: #3b82f6;
   
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -48,13 +44,11 @@
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   
   /* Spacing */
-  --spacing-xxs: 0.25rem;
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 0.75rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
-  --spacing-xxl: 3rem;
   --spacing-2xl: 3rem;
   
   /* Border Radius */
@@ -68,18 +62,6 @@
   --transition-fast: 0.15s ease-out;
   --transition-normal: 0.3s ease-out;
   --transition-slow: 0.5s ease-out;
-  
-  /* Typography */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  
-  /* Layout */
-  --navbar-height: 60px;
 }
 
 /* Global Styles */
@@ -94,25 +76,13 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  margin: 0;
-  padding: 0;
-}
-
-/* Base App Layout */
-.App {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: var(--background);
-  color: var(--text-primary);
 }
 
 /* Main Layout & Containers */
 .container {
-  flex-grow: 1;
   max-width: 1280px;
   margin: var(--spacing-xl) auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-2xl);
   background: var(--glass-background);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -133,7 +103,6 @@ body {
   backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
-  color: white;
 }
 
 .navbar::before {
@@ -147,8 +116,7 @@ body {
   pointer-events: none;
 }
 
-.navbar-brand,
-.navbar-brand a {
+.navbar-brand {
   color: white;
   font-size: 1.875rem;
   font-weight: 700;
@@ -160,8 +128,7 @@ body {
   transition: var(--transition-normal);
 }
 
-.navbar-brand:hover,
-.navbar-brand a:hover {
+.navbar-brand:hover {
   transform: translateY(-1px);
 }
 
@@ -177,8 +144,7 @@ body {
   position: relative;
 }
 
-.nav-link,
-.navbar-nav li a {
+.nav-link {
   color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   font-size: 1.1rem;
@@ -201,8 +167,7 @@ body {
   transition: var(--transition-normal);
 }
 
-.nav-link:hover,
-.navbar-nav li a:hover {
+.nav-link:hover {
   color: white;
   background: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
@@ -212,8 +177,7 @@ body {
   left: 0;
 }
 
-.logout-btn,
-.logout-button {
+.logout-btn {
   background: linear-gradient(135deg, var(--danger-red), var(--danger-red-dark));
   color: white;
   padding: var(--spacing-sm) var(--spacing-lg);
@@ -226,53 +190,14 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-.logout-btn:hover,
-.logout-button:hover {
+.logout-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   background: linear-gradient(135deg, var(--danger-red-dark), #b91c1c);
 }
 
-/* General Form and Input Styling */
-input[type="text"],
-input[type="password"],
-input[type="email"],
-input[type="number"],
-input[type="date"],
-input[type="datetime-local"],
-textarea,
-select {
-  color: var(--text-primary);
-  background-color: var(--card-background);
-  border: 2px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: 1rem;
-  width: 100%;
-  transition: var(--transition-normal);
-  backdrop-filter: blur(10px);
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-  transform: translateY(-1px);
-}
-
 /* Modern Auth Components */
 .auth-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - var(--navbar-height));
-  background-color: var(--background);
-}
-
-.auth-card {
   max-width: 480px;
   margin: var(--spacing-2xl) auto;
   padding: var(--spacing-2xl);
@@ -284,11 +209,9 @@ textarea:focus {
   text-align: center;
   position: relative;
   overflow: hidden;
-  width: 100%;
-  max-width: 400px;
 }
 
-.auth-card::before {
+.auth-container::before {
   content: '';
   position: absolute;
   top: -50%;
@@ -304,7 +227,7 @@ textarea:focus {
   to { transform: rotate(360deg); }
 }
 
-.auth-card h2 {
+.auth-container h2 {
   background: var(--primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -316,22 +239,14 @@ textarea:focus {
   z-index: 1;
 }
 
-.auth-form,
-.auth-card form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
+.auth-form .form-group {
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
   position: relative;
   z-index: 1;
 }
 
-.auth-form .form-group {
-  margin-bottom: var(--spacing-lg);
-  text-align: left;
-}
-
-.auth-form label,
-.auth-card form label {
+.auth-form label {
   display: block;
   margin-bottom: var(--spacing-sm);
   font-weight: 600;
@@ -341,11 +256,29 @@ textarea:focus {
   letter-spacing: 0.05em;
 }
 
-.auth-card button {
-  margin-top: var(--spacing-lg);
+.auth-form input[type="text"],
+.auth-form input[type="password"],
+.auth-form select {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  transition: var(--transition-normal);
 }
 
-/* Button Styles */
+.auth-form input:focus,
+.auth-form select:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
 .btn-primary {
   background: var(--primary-gradient);
   color: white;
@@ -377,7 +310,6 @@ textarea:focus {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  background-color: var(--primary-blue-dark);
 }
 
 .btn-primary:hover::before {
@@ -432,63 +364,11 @@ textarea:focus {
 }
 
 /* Modern Dashboard */
-.dashboard-container,
-.dashboard-grid {
+.dashboard-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--spacing-xl);
   padding: var(--spacing-xl);
-  margin-top: var(--spacing-lg);
-}
-
-.dashboard-card {
-  background: var(--glass-background);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-2xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-glass);
-  transition: var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-}
-
-.dashboard-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent-gradient);
-  transform: scaleX(0);
-  transition: var(--transition-normal);
-}
-
-.dashboard-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.dashboard-card:hover::before {
-  transform: scaleX(1);
-}
-
-.dashboard-card h3 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-  color: var(--text-primary);
-  font-size: var(--font-size-lg);
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 600;
-}
-
-.dashboard-card p {
-  color: var(--text-secondary);
-  font-size: var(--font-size-base);
 }
 
 .latest-metrics-summary {
@@ -585,7 +465,6 @@ textarea:focus {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   transition: var(--transition-normal);
-  margin-bottom: var(--spacing-sm);
 }
 
 /* Status-based colors for metrics */
@@ -608,118 +487,6 @@ textarea:focus {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-/* Dashboard Header & Filters */
-.dashboard-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: var(--spacing-md);
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: var(--spacing-xl);
-}
-
-/* Force header text to be solid white instead of gradient */
-.dashboard-header h2 {
-  color: white !important;
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  -webkit-text-fill-color: white !important;
-  background-clip: unset !important;
-  margin-bottom: var(--spacing-lg);
-  font-size: 2.25rem;
-  font-weight: 700;
-}
-
-/* Override filters to have black background */
-.dashboard-header .filters.card {
-  background-color: black !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-xl);
-  box-shadow: var(--shadow-glass);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-lg);
-  align-items: flex-end;
-}
-
-.dashboard-header .filter-group {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 200px;
-  gap: var(--spacing-sm);
-}
-
-/* Filter group styling with black text labels */
-.dashboard-header .filter-group label {
-  color: black !important;
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--spacing-sm);
-  font-weight: 600;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: inline-block;
-  width: fit-content;
-}
-
-/* Force white background and black text for form inputs */
-.dashboard-header .filter-group select,
-.dashboard-header .filter-group input[type="datetime-local"] {
-  background-color: white !important;
-  color: black !important;
-  border: 2px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: 1rem;
-  width: 100%;
-  transition: var(--transition-normal);
-  backdrop-filter: none;
-}
-
-.dashboard-header .filter-group select:focus,
-.dashboard-header .filter-group input[type="datetime-local"]:focus {
-  outline: none;
-  border-color: var(--primary-blue);
-  background-color: white !important;
-  color: black !important;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-  transform: translateY(-1px);
-}
-
-/* Ensure dropdown options remain white background with black text */
-.dashboard-header .filter-group select option {
-  background-color: white !important;
-  color: black !important;
-}
-
-/* Style the apply button to match the existing theme */
-.dashboard-header .btn-primary {
-  background: var(--accent-gradient);
-  color: white;
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-size: 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: var(--transition-normal);
-  white-space: nowrap;
-  box-shadow: var(--shadow-md);
-  align-self: flex-end;
-}
-
-.dashboard-header .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
 }
 
 /* Modern Chart Cards */
@@ -746,16 +513,11 @@ textarea:focus {
 }
 
 /* Modern Reports Page */
-.reports-container,
-.reports-page {
+.reports-container {
   padding: var(--spacing-xl);
-  background-color: var(--card-background);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
 }
 
-.reports-container h2,
-.reports-page h2 {
+.reports-container h2 {
   background: var(--primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -763,7 +525,6 @@ textarea:focus {
   margin-bottom: var(--spacing-xl);
   font-size: 2.25rem;
   font-weight: 700;
-  margin-top: 0;
 }
 
 .filters {
@@ -798,10 +559,7 @@ textarea:focus {
 
 .filters input[type="text"],
 .filters input[type="date"],
-.filters select,
-.reports-page form input[type="date"],
-.reports-page form input[type="text"],
-.reports-page form select {
+.filters select {
   padding: var(--spacing-md) var(--spacing-lg);
   border: 2px solid var(--border-light);
   border-radius: var(--radius-lg);
@@ -814,9 +572,7 @@ textarea:focus {
 }
 
 .filters input:focus,
-.filters select:focus,
-.reports-page form input:focus,
-.reports-page form select:focus {
+.filters select:focus {
   outline: none;
   border-color: var(--primary-blue);
   background: rgba(255, 255, 255, 0.95);
@@ -842,39 +598,7 @@ textarea:focus {
   box-shadow: var(--shadow-lg);
 }
 
-.reports-page form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
-}
-
-.reports-page form label {
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.reports-page form input[type="date"],
-.reports-page form input[type="text"],
-.reports-page form select {
-  width: fit-content;
-}
-
-.reports-page button {
-  align-self: flex-start;
-}
-
-.report-output {
-  white-space: pre-wrap;
-  background-color: var(--bg-secondary);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
-}
-
+/* Modern Tables */
 .report-table,
 .latest-metrics-table {
   width: 100%;
@@ -1163,7 +887,6 @@ textarea:focus {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-
 /* Dashboard Header Specific Overrides */
 .dashboard-header {
   margin-bottom: var(--spacing-xl);
