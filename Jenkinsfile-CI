@@ -77,8 +77,8 @@ pipeline {
                         def remoteAppPath = "/home/${env.DEPLOY_SERVER_USER}/system-health-monitor"
                         echo "Copying docker-compose.yml to ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}"
 
-                        sh "ssh -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} 'mkdir -p ${remoteAppPath}'"
-                        sh "scp -i ${SSH_KEY_PATH} docker-compose.yml ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}/docker-compose.yml"
+                        sh "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} 'mkdir -p ${remoteAppPath}'"
+                        sh "scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} docker-compose.yml ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}/docker-compose.yml"
 
                         echo "Executing Docker Compose deployment on ${env.DEPLOY_SERVER_IP}"
                         sh """
