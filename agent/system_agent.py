@@ -1,3 +1,4 @@
+# agent/system_agent.py
 import time
 import socket
 import psutil
@@ -7,7 +8,7 @@ import os
 from datetime import datetime
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:5000/api/metrics")
-HOSTNAME = socket.gethostname()
+HOSTNAME = socket.gethostname() # This will be the deviceName
 
 def collect_metrics():
     cpu = psutil.cpu_percent(interval=1)
@@ -17,10 +18,11 @@ def collect_metrics():
     os_type = platform.system()
 
     metrics = {
-        "hostname": HOSTNAME,
-        "cpu": cpu,
-        "memory": round(memory.percent, 2),
-        "disk": round(disk.percent, 2),
+        # --- CRITICAL CHANGE: Renamed 'hostname' to 'deviceName' ---
+        "deviceName": HOSTNAME, # This field now matches the Mongoose model
+        "cpuUsage": cpu,      # Changed 'cpu' to 'cpuUsage' to match Metric model
+        "memoryUsage": round(memory.percent, 2), # Changed 'memory' to 'memoryUsage'
+        "diskUsage": round(disk.percent, 2), # Changed 'disk' to 'diskUsage'
         "uptime": uptime,
         "os": os_type,
         "timestamp": datetime.utcnow().isoformat()

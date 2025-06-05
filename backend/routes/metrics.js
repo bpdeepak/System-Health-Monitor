@@ -10,6 +10,7 @@ const authorize = require('../middleware/authorize'); // Import authorization mi
 // @access  Public (for agent, or add shared secret auth if needed)
 router.post('/', async (req, res) => {
   try {
+    // The request body from the agent should now contain 'deviceName', 'cpuUsage', etc.
     const newMetric = new Metric(req.body);
     await newMetric.save();
     res.status(201).json({ message: 'Metric saved' });
@@ -24,17 +25,18 @@ router.post('/', async (req, res) => {
 });
 
 // @route   GET /api/metrics
-// @desc    Get metrics based on time range, hostname, or specific dates
+// @desc    Get metrics based on time range, deviceName, or specific dates
 // @access  Private (User/Admin)
-// This single route handles requests from frontend like /api/metrics?timeRange=24h or /api/metrics?hostname=server1
 router.get('/', authMiddleware, authorize(['user', 'admin']), async (req, res) => {
-    const { hostname, timeRange, startDate, endDate } = req.query;
+    // --- CRITICAL CHANGE: Changed 'hostname' to 'deviceName' in query params ---
+    const { deviceName, timeRange, startDate, endDate } = req.query;
     let query = {};
 
-    console.log('Backend: GET /api/metrics received query params:', { hostname, timeRange, startDate, endDate });
+    console.log('Backend: GET /api/metrics received query params:', { deviceName, timeRange, startDate, endDate });
 
-    if (hostname && hostname !== 'all') { // If hostname is specified and not 'all'
-        query.hostname = hostname;
+    // --- CRITICAL CHANGE: Filter by deviceName instead of hostname ---
+    if (deviceName && deviceName !== 'all') { // If deviceName is specified and not 'all'
+        query.deviceName = deviceName;
     }
 
     if (startDate && endDate) { // If specific date range is provided
@@ -87,16 +89,17 @@ router.get('/', authMiddleware, authorize(['user', 'admin']), async (req, res) =
 
 
 // @route   GET /api/metrics/latest
-// @desc    Get the latest metric for each unique hostname
+// @desc    Get the latest metric for each unique deviceName
 // @access  Private (User/Admin)
 router.get('/latest', authMiddleware, authorize(['user', 'admin']), async (req, res) => {
     try {
         const latest = await Metric.aggregate([
             { $sort: { timestamp: -1 } }, // Sort by latest timestamp
             {
+                // --- CRITICAL CHANGE: Group by deviceName instead of hostname ---
                 $group: {
-                    _id: "$hostname", // Group by hostname
-                    latest: { $first: "$$ROOT" } // Get the first (latest) document for each hostname
+                    _id: "$deviceName", // Group by deviceName
+                    latest: { $first: "$$ROOT" } // Get the first (latest) document for each deviceName
                 }
             }
         ]);

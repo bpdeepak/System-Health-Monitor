@@ -28,8 +28,8 @@ function Dashboard() {
   const [latestMetrics, setLatestMetrics] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedHostname, setSelectedHostname] = useState('all');
-  const [availableHostnames, setAvailableHostnames] = useState(['all']);
+  const [selectedDeviceName, setSelectedDeviceName] = useState('all'); // Changed from selectedHostname
+  const [availableDeviceNames, setAvailableDeviceNames] = useState(['all']); // Changed from availableHostnames
   const [timeRange, setTimeRange] = useState('24h'); // Default time range
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -49,14 +49,15 @@ function Dashboard() {
     let url = `${process.env.REACT_APP_BACKEND_URL}/api/metrics`;
     const params = new URLSearchParams();
 
-    if (selectedHostname && selectedHostname !== 'all') {
-      params.append('hostname', selectedHostname);
+    // --- CRITICAL CHANGE: Use selectedDeviceName and append 'deviceName' param ---
+    if (selectedDeviceName && selectedDeviceName !== 'all') {
+      params.append('deviceName', selectedDeviceName);
     }
 
     if (timeRange === 'custom' && customStartDate && customEndDate) {
       params.append('startDate', customStartDate);
       params.append('endDate', customEndDate);
-    } else if (timeRange !== 'custom') { // Only append timeRange if not custom
+    } else if (timeRange !== 'custom') {
       params.append('timeRange', timeRange);
     }
 
@@ -84,7 +85,7 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [logout, navigate, selectedHostname, timeRange, customStartDate, customEndDate]);
+  }, [logout, navigate, selectedDeviceName, timeRange, customStartDate, customEndDate]); // Updated dependency
 
   const fetchLatestMetrics = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -105,23 +106,23 @@ function Dashboard() {
     }
   }, []);
 
-  const fetchHostnames = useCallback(async () => {
+  // --- CRITICAL CHANGE: Fetch device names from /api/devices ---
+  const fetchDeviceNames = useCallback(async () => { // Renamed from fetchHostnames
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/hosts`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/devices`, { // Fetches from /api/devices
         headers: { 'x-auth-token': token },
       });
-      const data = await response.json();
+      const data = await response.json(); // This will be an array of device names
       if (response.ok) {
-        // Ensure 'all' option is always present and at the beginning
-        setAvailableHostnames(['all', ...data.filter(host => host !== 'all')]);
+        setAvailableDeviceNames(['all', ...data.filter(name => name !== 'all')]); // Ensure 'all' is first
       } else {
-        console.error('Failed to fetch hostnames:', data.message);
+        console.error('Failed to fetch device names:', data.message);
       }
     } catch (err) {
-      console.error('Error fetching hostnames:', err);
+      console.error('Error fetching device names:', err);
     }
   }, []);
 
@@ -129,7 +130,7 @@ function Dashboard() {
     if (isAuthenticated) {
       fetchMetrics();
       fetchLatestMetrics();
-      fetchHostnames();
+      fetchDeviceNames(); // Call the new fetchDeviceNames
       // Set up interval for refreshing metrics
       const intervalId = setInterval(() => {
         fetchMetrics();
@@ -137,40 +138,35 @@ function Dashboard() {
       }, 30000); // Refresh every 30 seconds
       return () => clearInterval(intervalId); // Cleanup on component unmount
     }
-  }, [isAuthenticated, fetchMetrics, fetchLatestMetrics, fetchHostnames]);
+  }, [isAuthenticated, fetchMetrics, fetchLatestMetrics, fetchDeviceNames]); // Updated dependency
 
   // Data preparation for charts
   const chartData = useMemo(() => {
-    // If 'all' is selected, we need to process data for all hosts.
-    // Recharts expects an array of objects for the `data` prop.
-    // When displaying multiple lines, each line's data should be part of these objects.
-    // For "all hosts", we'll return a flat array where each object contains
-    // the metric for a specific timestamp and hostname, allowing Recharts
-    // to draw separate lines based on the `dataKey` and `name` in Area/Line.
-    if (selectedHostname === 'all') {
+    // If 'all' is selected, we need to process data for all devices.
+    if (selectedDeviceName === 'all') {
       const allMetricsProcessed = metrics.map(metric => ({
         ...metric,
         timestamp: new Date(metric.timestamp).toLocaleString(),
-        cpuUsage: metric.cpu,
-        memoryUsage: metric.memory,
-        diskUsage: metric.disk
+        cpuUsage: metric.cpuUsage, // Ensure these match the agent's new keys
+        memoryUsage: metric.memoryUsage,
+        diskUsage: metric.diskUsage
       }));
       // Sort by timestamp to ensure proper chart rendering
       return allMetricsProcessed.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     } else {
-      // If a specific hostname is selected, filter and format
+      // If a specific deviceName is selected, filter and format
       return metrics
-        .filter(metric => metric.hostname === selectedHostname)
+        .filter(metric => metric.deviceName === selectedDeviceName) // Filter by deviceName
         .map(metric => ({
           ...metric,
           timestamp: new Date(metric.timestamp).toLocaleString(),
-          cpuUsage: metric.cpu,
-          memoryUsage: metric.memory,
-          diskUsage: metric.disk
+          cpuUsage: metric.cpuUsage,
+          memoryUsage: metric.memoryUsage,
+          diskUsage: metric.diskUsage
         }))
         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     }
-  }, [metrics, selectedHostname]);
+  }, [metrics, selectedDeviceName]); // Updated dependency
 
 
   const latestMetricsDisplay = useMemo(() => {
@@ -185,15 +181,16 @@ function Dashboard() {
         return null;
       }
 
-      const cpuUsage = metric.cpu ?? 0;
-      const memoryUsage = metric.memory ?? 0;
-      const diskUsage = metric.disk ?? 0;
+      // --- CRITICAL CHANGE: Use metric.deviceName and new metric keys ---
+      const cpuUsage = metric.cpuUsage ?? 0;
+      const memoryUsage = metric.memoryUsage ?? 0;
+      const diskUsage = metric.diskUsage ?? 0;
       const uptime = metric.uptime ?? 0;
       const os = metric.os ?? 'N/A';
-      const hostname = metric.hostname ?? 'N/A';
+      const deviceName = metric.deviceName ?? 'N/A'; // Use deviceName here
 
       return {
-        hostname: hostname,
+        deviceName: deviceName, // Return deviceName
         cpuUsage: cpuUsage,
         memoryUsage: memoryUsage,
         diskUsage: diskUsage,
@@ -205,12 +202,10 @@ function Dashboard() {
 
 
   if (loading && metrics.length === 0) {
-    // Apply styling to loading container
     return <div className="loading-container">Loading dashboard data...</div>;
   }
 
   if (error) {
-    // Apply styling to error container
     return <div className="error-container">Error: {error}</div>;
   }
 
@@ -218,24 +213,23 @@ function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>System Monitoring Dashboard</h2>
-        {/* --- NEW: Add 'card' class to filters div for consistent styling --- */}
         <div className="filters card">
-          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
-            <label htmlFor="hostname-select">Hostname:</label>
+          <div className="filter-group">
+            <label htmlFor="device-select">Device Name:</label> {/* Changed label */}
             <select
-              id="hostname-select"
-              value={selectedHostname}
-              onChange={(e) => setSelectedHostname(e.target.value)}
+              id="device-select" // Changed ID
+              value={selectedDeviceName}
+              onChange={(e) => setSelectedDeviceName(e.target.value)}
             >
-              {availableHostnames.map((host) => (
-                <option key={host} value={host}>
-                  {host === 'all' ? 'All Hosts' : host}
+              {availableDeviceNames.map((name) => ( // Use availableDeviceNames
+                <option key={name} value={name}>
+                  {name === 'all' ? 'All Devices' : name} {/* Changed text */}
                 </option>
               ))}
             </select>
           </div>
 
-          <div className="filter-group"> {/* Wrap each filter in a group for better styling */}
+          <div className="filter-group">
             <label htmlFor="time-range-select">Time Range:</label>
             <select
               id="time-range-select"
@@ -276,13 +270,13 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="latest-metrics-summary card"> {/* Already has 'card' */}
+      <div className="latest-metrics-summary card">
         <h3>Latest System Metrics Summary</h3>
         {latestMetricsDisplay.length > 0 ? (
-          <table className="latest-metrics-table"> {/* NEW: Add class for table styling */}
+          <table className="latest-metrics-table">
             <thead>
               <tr>
-                <th>Hostname</th>
+                <th>Device Name</th> {/* Changed Header */}
                 <th>CPU Usage (%)</th>
                 <th>Memory Usage (%)</th>
                 <th>Disk Usage (%)</th>
@@ -293,8 +287,7 @@ function Dashboard() {
             <tbody>
               {latestMetricsDisplay.map((metric, index) => (
                 <tr key={index}>
-                  <td>{metric.hostname}</td>
-                  {/* Apply .metric-value and status classes based on thresholds */}
+                  <td>{metric.deviceName}</td> {/* Display deviceName */}
                   <td className={`metric-value ${metric.cpuUsage > 80 ? 'critical' : metric.cpuUsage > 60 ? 'warning' : 'normal'}`}>{metric.cpuUsage.toFixed(2)}</td>
                   <td className={`metric-value ${metric.memoryUsage > 80 ? 'critical' : metric.memoryUsage > 60 ? 'warning' : 'normal'}`}>{metric.memoryUsage.toFixed(2)}</td>
                   <td className={`metric-value ${metric.diskUsage > 80 ? 'critical' : metric.diskUsage > 60 ? 'warning' : 'normal'}`}>{metric.diskUsage.toFixed(2)}</td>
@@ -305,91 +298,87 @@ function Dashboard() {
             </tbody>
           </table>
         ) : (
-          <p>No latest metrics available.</p>
+          <p>No latest metrics available. Ensure agents are running and devices are added.</p>
         )}
       </div>
 
-      <div className="charts-container"> {/* NEW: Consider grid layout for charts if needed */}
-        <div className="chart-card card"> {/* Already has 'card' */}
-          <h3>CPU Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
+      <div className="charts-container">
+        <div className="chart-card card">
+          <h3>CPU Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
-              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
-              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
+              <YAxis domain={[0, 100]} label={{ value: 'CPU (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
-              {selectedHostname === 'all' ? (
-                // When 'all' is selected, render an Area for each unique hostname.
-                // The dataKey should remain 'cpuUsage' as it's consistent across all objects in chartData.
-                // The 'name' prop of Area will be used in the legend.
-                [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
+              {selectedDeviceName === 'all' ? (
+                // When 'all' is selected, render an Area for each unique deviceName.
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
                   <Area
-                    key={`cpu-${hostname}`}
+                    key={`cpu-${deviceName}`}
                     type="monotone"
                     dataKey="cpuUsage"
-                    name={`${hostname} CPU`}
-                    stroke={getChartColor(index)} // Use new color palette
-                    fill={getChartColor(index)}    // Use new color palette
+                    name={`${deviceName} CPU`} // Display deviceName
+                    stroke={getChartColor(index)}
+                    fill={getChartColor(index)}
                     fillOpacity={0.3}
                     dot={false}
-                    // No need to pass data prop here when chartData already contains all data
                   />
                 ))
               ) : (
-                // When a specific hostname is selected, render a single Area.
                 <Area type="monotone" dataKey="cpuUsage" stroke={CHART_LINE_COLORS[0]} fill={CHART_LINE_COLORS[0]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card"> {/* Already has 'card' */}
-          <h3>Memory Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
+        <div className="chart-card card">
+          <h3>Memory Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
-              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
-              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
+              <YAxis domain={[0, 100]} label={{ value: 'Memory (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
-              {selectedHostname === 'all' ? (
-                [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
+              {selectedDeviceName === 'all' ? (
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
                   <Area
-                    key={`mem-${hostname}`}
+                    key={`mem-${deviceName}`}
                     type="monotone"
                     dataKey="memoryUsage"
-                    name={`${hostname} Memory`}
-                    stroke={getChartColor(index + 1)} // Use new color palette (offset by 1 to get a different color)
+                    name={`${deviceName} Memory`} // Display deviceName
+                    stroke={getChartColor(index + 1)}
                     fill={getChartColor(index + 1)}
                     fillOpacity={0.3}
                     dot={false}
                   />
                 ))
               ) : (
-                <Area type="monotone" dataKey="memoryUsage" stroke={CHART_LINE_COLORS[1]} fill={CHART_LINE_COLORS[1]} fillOpacity={0.3} dot={false} /> 
+                <Area type="monotone" dataKey="memoryUsage" stroke={CHART_LINE_COLORS[1]} fill={CHART_LINE_COLORS[1]} fillOpacity={0.3} dot={false} />
               )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card card"> {/* Already has 'card' */}
-          <h3>Disk Usage Over Time ({selectedHostname === 'all' ? 'All Hosts' : selectedHostname})</h3>
+        <div className="chart-card card">
+          <h3>Disk Usage Over Time ({selectedDeviceName === 'all' ? 'All Devices' : selectedDeviceName})</h3> {/* Changed text */}
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" /> {/* Use border variable */}
-              <XAxis dataKey="timestamp" stroke="var(--text-medium)" /> {/* Use text variable */}
-              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" /> {/* Use text variable */}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
+              <XAxis dataKey="timestamp" stroke="var(--text-medium)" />
+              <YAxis domain={[0, 100]} label={{ value: 'Disk (%)', angle: -90, position: 'insideLeft', fill: 'var(--text-medium)' }} stroke="var(--text-medium)" />
               <Tooltip />
               <Legend />
-              {selectedHostname === 'all' ? (
-                [...new Set(metrics.map(m => m.hostname))].map((hostname, index) => (
+              {selectedDeviceName === 'all' ? (
+                [...new Set(metrics.map(m => m.deviceName))].map((deviceName, index) => ( // Use deviceName
                   <Area
-                    key={`disk-${hostname}`}
+                    key={`disk-${deviceName}`}
                     type="monotone"
                     dataKey="diskUsage"
-                    name={`${hostname} Disk`}
-                    stroke={getChartColor(index + 2)} // Use new color palette (offset by 2)
+                    name={`${deviceName} Disk`} // Display deviceName
+                    stroke={getChartColor(index + 2)}
                     fill={getChartColor(index + 2)}
                     fillOpacity={0.3}
                     dot={false}
