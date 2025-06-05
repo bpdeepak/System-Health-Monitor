@@ -1,55 +1,132 @@
+// Jenkinsfile-CI (or just Jenkinsfile)
+
 pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'bpdeepak'
-        IMAGE_TAG = 'latest'
+        DOCKERHUB_USER = 'bpdeepak49'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        GITHUB_CRED_ID = 'github-creds'
+        DOCKERHUB_CRED_ID = 'dockerhub-creds'
+        MONGO_URI = 'mongodb://localhost:27017/monitoring_test' // This is for local Jenkins tests, not for deployed mongo
+        JWT_SECRET = '6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a'
+        MONGO_TEST_URI = 'mongodb://localhost:27017/monitoring_test' // Same as above
+
+        DEPLOY_SERVER_USER = 'ubuntu'  // Default user for Ubuntu EC2
+        DEPLOY_SERVER_IP = '16.170.221.145' // EC2 Public IPv4 address
+        SSH_CRED_ID = 'ssh-deploy-server' // SSH credential ID
+        HOSTNAME_FOR_AGENT_TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
-        stage('Clone Code') {
-            steps {
-                git url:
-                'https://github.com/bpdeepak/System-Health-Monitor.git',
-                branch: 'main',
-                credentialsId: 'github-cred'
-
-            }
-        }
-
-        stage('Install & Test Backend') {
+        stage('Backend Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
-                    sh 'npm test'
+                    sh 'npm install --silent'
+                    sh 'echo "MONGO_TEST_URI in Jenkins pipeline: $MONGO_TEST_URI"'
+                    sh 'rm -f .env' // Ensure no old .env interferes with tests
+                    sh 'npm test -- --silent'
                 }
             }
         }
 
-        stage('Install & Lint Frontend') {
+        stage('Frontend Build & Test') {
             steps {
                 dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run lint'
+                    sh 'rm -rf node_modules' // Clean slate for npm install
+                    sh 'rm -f package-lock.json' // Remove lock file to ensure fresh install
+                    sh 'npm install --silent'
+                    // For npm test, it usually runs in development mode.
+                    // If your tests make actual API calls, they might need env vars too.
+                    // For now, let's assume they are mocked or don't hit real APIs.
+                    sh 'npm test -- --ci --watchAll=false --silent'
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker build -t $DOCKERHUB_USER/backend:$IMAGE_TAG ./backend'
-                sh 'docker build -t $DOCKERHUB_USER/frontend:$IMAGE_TAG ./frontend'
+                script {
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG} ./backend"
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG} --build-arg REACT_APP_BACKEND_URL=http://${env.DEPLOY_SERVER_IP}:5000 ./frontend"
+                    sh "docker build -t ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG} ./agent"
+                }
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
-                    sh 'docker push $DOCKERHUB_USER/backend:$IMAGE_TAG'
-                    sh 'docker push $DOCKERHUB_USER/frontend:$IMAGE_TAG'
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}"
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}"
+                    sh "docker push ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}"
                 }
             }
+        }
+
+        stage('Deploy with Docker Compose') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY_PATH', passphraseVariable: ''),
+                    usernamePassword(credentialsId: env.DOCKERHUB_CRED_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')
+                ]) {
+                    script {
+                        sh "chmod 600 ${SSH_KEY_PATH}"
+
+                        def remoteAppPath = "/home/${env.DEPLOY_SERVER_USER}/system-health-monitor"
+                        echo "Copying docker-compose.yml to ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}"
+
+                        sh "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} 'mkdir -p ${remoteAppPath}'"
+                        sh "scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} docker-compose.yml ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP}:${remoteAppPath}/docker-compose.yml"
+
+                        echo "Executing Docker Compose deployment on ${env.DEPLOY_SERVER_IP}"
+                        sh """
+                    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${SSH_KEY_PATH} ${env.DEPLOY_SERVER_USER}@${env.DEPLOY_SERVER_IP} bash -s << 'EOF'
+                        cd ${remoteAppPath}
+
+                        echo "Logging into Docker Hub..."
+                        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
+                        echo "Pulling latest Docker images..."
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-backend:${env.IMAGE_TAG}
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-frontend:${env.IMAGE_TAG}
+                        docker pull ${env.DOCKERHUB_USER}/system-health-monitor-agent:${env.IMAGE_TAG}
+                        docker pull mongo:latest
+
+                        echo "Stopping and removing old containers..."
+                        docker compose down --remove-orphans
+
+                        echo "Starting new containers with Docker Compose..."
+                        # Ensure your docker-compose.yml correctly uses http://backend:5000 for inter-container communication
+                        # The REACT_APP_BACKEND_URL passed during build is for the browser.
+                        echo "IMAGE_TAG=${env.IMAGE_TAG}" > .env
+                        echo "HOSTNAME_FOR_AGENT_TAG=${env.HOSTNAME_FOR_AGENT_TAG}" >> .env
+                        docker compose up -d
+
+                        echo "Cleaning up old Docker images locally (optional)..."
+                        docker image prune -f
+
+                        echo "Logging out from Docker Hub..."
+                        docker logout
+                        echo "Deployment commands finished on remote server."
+EOF
+"""
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline finished successfully!'
+        }
+        failure {
+            echo 'Pipeline failed! Check logs for errors.'
         }
     }
 }

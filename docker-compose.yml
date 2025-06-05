@@ -1,27 +1,94 @@
+version: '3.8' # You can remove this line if you want to silence the warning, but it's harmless.
+
 services:
-  backend:
-    build: ./backend
+  mongo:
+    image: mongo:latest
+    container_name: mongodb_monitoring
     ports:
-      - "5000:5000"
+      - "27017:27017" # Exposed port on host for direct access if needed, maps to container's 27017
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --port 27017 --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s # Give Mongo more time to start up and become healthy
+
+  backend:
+    image: bpdeepak49/system-health-monitor-backend:${IMAGE_TAG}
+    container_name: backend_monitoring
+    ports:
+      - "5000:5000" # Backend API accessible on host port 5000
     environment:
-      - MONGO_URI=mongodb://mongo:27017/monitoring
+      MONGO_URI: mongodb://mongo:27017/monitoring
+      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    restart: always
+    networks:
+      - app-network
 
   frontend:
-    build: ./frontend
+    image: bpdeepak49/system-health-monitor-frontend:${IMAGE_TAG}
+    container_name: frontend_monitoring
     ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  mongo:
-    image: mongo
-    ports:
-      - "27017:27017"
-
-  agent:
-    build: ./agent
+      - "80:80" # <--- IMPORTANT CHANGE: Frontend now on standard HTTP port 80
+    environment:
+      REACT_APP_BACKEND_URL: http://16.170.221.145:5000 # This should be the public IP/DNS of your EC2 instance and port 5000
     depends_on:
       - backend
     restart: always
+    networks:
+      - app-network
+
+  agent:
+    image: bpdeepak49/system-health-monitor-agent:${IMAGE_TAG}
+    container_name: agent_monitoring
+    environment:
+      API_ENDPOINT: http://backend:5000/api/metrics # This is correct for inter-container communication
+      HOSTNAME: agent-${HOSTNAME_FOR_AGENT_TAG:-default} # Use a default if HOSTNAME_FOR_AGENT_TAG is not set
+      JWT_SECRET: 6c43ab5946eba06a5ca3a964a5a729d8d5da6da47ac86a67ae20bd352e4d73a00d496613834698badcfe69fce84366880a038257eec8122226122a7caed8533a
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro # Use read-only mount
+      - prometheus_data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver --web.enable-lifecycle
+    ports:
+      - "9090:9090" # Prometheus web UI accessible on host port 9090
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000" # <--- IMPORTANT CHANGE: Grafana now on standard host port 3000
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  mongodb_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # How frequently to scrape targets
+
+scrape_configs:
+  - job_name: 'node_exporter'
+    static_configs:
+      # Replace <Your-EC2-Private-IP> with your instance's private IP (e.g., 172.31.25.205)
+      # Prometheus runs in Docker on the host, so it can reach the host's private IP.
+      - targets: ['172.31.25.205:9100']
+
+  # Optional: To monitor your Node.js backend for app-specific metrics (if instrumented)
+  # - job_name: 'backend'
+  #   static_configs:
+  #     - targets: ['backend:5000'] # 'backend' is the service name in docker-compose.yml
+  #   metrics_path: /metrics # Assuming your Node.js app exposes metrics on /metrics
