@@ -1,21 +1,21 @@
 // frontend/src/components/Navbar.js
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
-  const { isAuthenticated, userRole, logout } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout(); // Use logout from context
+    logout();
     navigate('/login');
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <Link to="/">System Monitor</Link>
+        <Link to="/">System Health Monitor</Link>
       </div>
       <ul className="navbar-nav">
         {isAuthenticated ? (
@@ -26,13 +26,18 @@ function Navbar() {
             <li className="nav-item">
               <Link to="/reports">Reports</Link>
             </li>
-            {userRole === 'admin' && (
+            <li className="nav-item">
+              <Link to="/devices">Manage Devices</Link>
+            </li>
+            {user?.roles?.includes('admin') && (
               <li className="nav-item">
                 <Link to="/admin">Admin Panel</Link>
               </li>
             )}
             <li className="nav-item">
-              <button onClick={handleLogout} className="nav-link logout-btn">Logout</button>
+              <button onClick={handleLogout} className="nav-link logout-btn">
+                Logout
+              </button>
             </li>
           </>
         ) : (

@@ -215,4 +215,3 @@ This project is licensed under the MIT License - see the `LICENSE` file for deta
 
 For any questions or issues, please open an issue on the GitHub repository or contact [Your Name/Email/GitHub Profile].ollects and stores time-series metrics from various sources. It's configured to scrape metrics from the `backend` and `agent` (if they expose Prometheus endpoints).
 * **`grafana`**: A powerful open-source platform for analytics and interactive visualization. It's connected to Prometheus to query and display dashboards based on collected metrics.
-

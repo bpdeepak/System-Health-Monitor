@@ -17,6 +17,7 @@ const authorize = require('./middleware/authorize');
 const reportsRoutes = require('./routes/reports');
 const metricsRoutes = require('./routes/metrics'); // <--- IMPORT THE METRICS ROUTER
 const Metric = require('./models/Metric'); // <--- IMPORT METRIC MODEL for /api/hosts route
+const deviceRoutes = require('./routes/devices'); // Path to your new routes file
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -31,12 +32,17 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Backend is running and MongoDB is connected' });
 });
 
+app.use(cors()); // Enables Cross-Origin Resource Sharing
+app.use(express.json()); // Body parser for JSON requests
+
 // Use Auth Routes (Public)
 app.use('/api/auth', authRoutes);
 // Use Reports Routes (Protected)
 app.use('/api/reports', reportsRoutes);
 // <--- USE THE METRICS ROUTER HERE TO REGISTER ALL METRIC ROUTES ---
 app.use('/api/metrics', metricsRoutes);
+// Use Device Routes (Protected)
+app.use('/api/devices', deviceRoutes);
 
 // NEW ROUTE: Define a route for fetching unique hostnames (Protected for frontend users)
 app.get('/api/hosts', authMiddleware, async (req, res) => {
