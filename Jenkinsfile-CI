@@ -13,7 +13,7 @@ pipeline {
         MONGO_TEST_URI = 'mongodb://localhost:27017/monitoring_test' // Same as above
 
         DEPLOY_SERVER_USER = 'ubuntu'  // Default user for Ubuntu EC2
-        DEPLOY_SERVER_IP = '16.170.221.145' // EC2 Public IPv4 address
+        DEPLOY_SERVER_IP = '51.21.254.7' // EC2 Public IPv4 address
         SSH_CRED_ID = 'ssh-deploy-server' // SSH credential ID
         HOSTNAME_FOR_AGENT_TAG = "${env.BUILD_NUMBER}"
     }
